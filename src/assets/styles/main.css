@@ -1,0 +1,24 @@
+@import "./base.css";
+
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-weight: normal;
+  background-color: var(--app-panel-bg);
+}
+
+/* 取消输入框自动填充背景颜色 */
+input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important; /* 保持你的背景 */
+  -webkit-text-fill-color: #fff !important; /* 字体白色 */
+  caret-color: #fff; /* 光标白色 */
+  transition: background-color 5000s ease-in-out 0s;
+}
+:deep(input:-webkit-autofill) {
+  -webkit-box-shadow: 0 0 0 1000px white inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff;
+}

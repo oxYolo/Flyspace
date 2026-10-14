@@ -1,0 +1,61 @@
+/* PangMenZhengDao 字体 */
+@font-face {
+  font-family: "PangMenZhengDao";
+  src: url("@/assets/fonts/PangMenZhengDao.ttf") format("truetype");
+  font-display: swap;
+}
+
+/* douyu 字体 */
+@font-face {
+  font-family: "douyu";
+  src: url("@/assets/fonts/douyuFont.otf") format("opentype");
+  font-display: swap;
+}
+
+/* douyu8os 字体 */
+@font-face {
+  font-family: "douyu8os";
+  src: url("@/assets/fonts/douyu8os.woff2") format("woff2");
+  font-display: swap;
+}
+
+/* DINBold 字体 */
+@font-face {
+  font-family: "DINBold";
+  src: url("@/assets/fonts/DINBold.otf") format("opentype");
+  font-display: swap;
+}
+
+/* DINMedium 字体 */
+@font-face {
+  font-family: "DINMedium";
+  src: url("@/assets/fonts/DINMedium.otf") format("opentype");
+  font-display: swap;
+}
+
+/* AzonixRegular 字体 */
+@font-face {
+  font-family: "AzonixRegular";
+  src: url("@/assets/fonts/Azonix.otf") format("opentype");
+  font-display: swap;
+}
+
+/* 光良体 */
+@font-face {
+  font-family: "GLJ-GBT";
+  src: url("@/assets/fonts/光良酒-干杯体.ttf") format("truetype");
+  font-display: swap;
+}
+
+/* 抖音美好体 */
+@font-face {
+  font-family: "DouyinSansBold";
+  src: url("@/assets/fonts/DouyinSansBold.otf") format("opentype");
+  font-display: swap;
+}
+@font-face {
+  font-family: com;
+  src: url("@/assets/fonts/fzxzyjt.ttf");
+  font-weight: normal;
+  font-style: normal;
+}

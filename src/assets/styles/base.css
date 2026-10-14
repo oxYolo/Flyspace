@@ -1,0 +1,370 @@
+/** 样式重置 */
+@import "./fonts.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  font-weight: normal;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 100px;
+}
+
+body {
+  font-size: 14px;
+}
+
+ul,
+li {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+/*elementui tree样式改造*/
+.el-tree {
+  background: transparent !important;
+  color: var(--app-second-text-01);
+  --el-tree-node-content-height: 32px;
+  --el-font-size-base: 12px;
+}
+
+.el-tree .el-tree-node__content:hover,
+.el-tree .el-tree-node:focus>.el-tree-node__content {
+  background: transparent;
+}
+
+/* 鼠标浮动过的背景颜色 */
+.el-tree .el-tree-node__content:hover {
+  background: var(--app-hover-bg);
+}
+
+.el-tree .el-tree-node__expand-icon.is-leaf {
+  color: transparent;
+}
+
+.el-tree .el-checkbox__inner {
+  border: 1px solid var(--app-border-color);
+  border-radius: 0;
+  background-color: var(--app-input-bg);
+}
+
+.el-checkbox__input.is-disabled.is-checked .el-checkbox__inner {
+  background-color: var(--app-primary-color);
+  border-color: var(--app-primary-color);
+}
+
+/*elementui input样式改造*/
+.el-input {
+  --el-font-size-base: 12px;
+  --el-input-text-color: var(--app-first-text);
+}
+
+.el-input .el-input__wrapper {
+  background-color: var(--app-input-bg);
+  box-shadow: 0 0 0 1px var(--app-border-color) inset;
+  padding: 1px 12px;
+  border-radius: 0.04rem;
+}
+
+.el-input__inner {
+  font-weight: 400;
+  /* 设置字重为常规，也就是普通粗细 */
+}
+
+.el-select-dropdown {
+  background-color: #FFF !important;
+  border: none !important;
+}
+
+.el-select-dropdown__item .is-selected {
+  background-color: #FFFFFF !important;
+  color: #0076D6 !important;
+}
+
+.el-input__inner::placeholder {
+  color: var(--app-third-text);
+  /* 修改 placeholder 的文字颜色 */
+  font-weight: 400;
+  /* 设置字重为常规，也就是普通粗细 */
+}
+
+/*elementui el-select样式改造*/
+.el-select__wrapper {
+  background-color: var(--app-input-bg);
+  border-radius: 0.04rem;
+  box-shadow: none !important;
+}
+
+/* 下拉菜单样式自定义 */
+.el-select-dropdown {
+  background-color: #ffffff !important;
+  border: 1px solid #e4e7ed !important;
+}
+
+
+.el-select-dropdown__item:hover {
+  background-color: #C7E0FA !important;
+}
+
+.el-select-dropdown__item.selected {
+  color: #303133 !important;
+  background-color: #C7E0FA !important;
+  font-weight: bold;
+}
+
+.el-select-dropdown__empty {
+  color: #909399 !important;
+}
+
+/*elementui el-message-box样式改造*/
+.el-message-box {
+  background-color: var(--app-panel-bg) !important;
+  border-radius: 0.08rem !important;
+  border: none;
+  font-size: 0.16rem;
+  width: 3.52rem;
+  padding: 0.24rem 0.24rem;
+  box-shadow: none;
+}
+
+.el-message-box__header {
+  width: 100%;
+  padding-left: 0.2rem !important;
+  margin-left: 0.1rem;
+}
+
+.el-message-box__title>span {
+  color: var(--app-title-text);
+  font-family: PangMenZhengDao;
+  font-weight: 400;
+  font-size: 0.22rem;
+}
+
+.el-message-box__container {
+  text-align: center !important;
+}
+
+.el-message-box__content {
+  padding: 0 0.3rem 0.12rem !important;
+  color: var(--app-first-text);
+}
+
+.el-message-box__message {
+  color: var(--app-first-text);
+}
+
+.el-message-box-icon--warning {
+  position: absolute;
+  left: 0.24rem;
+  top: 0.22rem;
+}
+
+.el-message-box__btns {
+  text-align: center;
+}
+
+.el-message-box__btns .el-button {
+  width: 0.8rem;
+  height: 0.32rem;
+  background-color: transparent;
+  color: var(--app-normal-bg);
+  border: 1px solid var(--app-normal-bg);
+  border-radius: 0.04rem;
+}
+
+.el-message-box__btns .el-button--primary {
+  background-color: var(--app-normal-bg);
+  color: var(--app-first-text);
+}
+
+.el-message-box__btns .el-button--primary:hover {
+  background-color: var(--app-hover-bg) !important;
+  color: var(--app-first-text);
+}
+
+.el-message-box__btns .el-button:hover {
+  background-color: var(--app-normal-bg-01);
+}
+
+.el-message-box__btns button:nth-child(2) {
+  margin-left: 0.15rem;
+}
+
+.el-button:focus {
+  outline: none;
+}
+
+/*elementui 删除popper弹窗样式改造  */
+.del-confirm {
+  padding: 0.1rem 0.12rem;
+}
+
+.del-confirm .el-button {
+  height: 0.2rem;
+  background-color: var(--app-normal-bg);
+  border: 1px solid var(--app-normal-bg);
+  border-radius: 0.04rem;
+}
+
+.del-confirm .is-text {
+  background-color: var(--app-normal-bg-01);
+  color: var(--app-normal-bg);
+}
+
+.del-confirm .is-text:hover {
+  background-color: var(--app-normal-bg-02) !important;
+}
+
+.del-confirm .el-button:hover {
+  background-color: var(--app-hover-bg);
+}
+
+/*elementui 警告提示框样式改造  */
+.warning-tip {
+  background: var(--app-panel-bg);
+  border-radius: 0.04rem;
+  border: none;
+  height: 0.32rem;
+  padding: 0.1rem 0.12rem;
+  gap: 0.04rem;
+}
+
+.warning-tip .el-message__content {
+  font-weight: 400;
+  font-size: 0.14rem;
+  color: var(--app-first-text);
+}
+
+/* 不带图标的message */
+.tip-no-icon .el-message-icon--info {
+  display: none;
+}
+
+/*滚动条样式*/
+::-webkit-scrollbar {
+  width: 0.04rem;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--app-scrollbar-bg);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--app-scrollbar-bg);
+}
+
+::-webkit-scrollbar-track {
+  border-radius: 5px;
+}
+
+/* popver 样式 */
+.time-popver {
+  transform: translateX(0.12rem);
+}
+
+.time-popver .el-popper__arrow {
+  transform: translateX(-0.09rem);
+}
+
+/* confirm-box样式 */
+.clear-roampath-confirm-box {
+  border: none !important;
+  box-shadow: none;
+}
+
+.clear-roampath-confirm-box .el-message-box__message {
+  color: var(--app-second-text-01);
+}
+
+.clear-roampath-confirm-box .el-button {
+  background-color: transparent;
+}
+
+.clear-roampath-confirm-box .el-button--primary {
+  background-color: var(--app-primary-color);
+}
+
+.clear-roampath-confirm-box .el-message-box__close {
+  color: var(--app-first-text);
+  font-size: 0.2rem !important;
+}
+
+.clear-roampath-confirm-box .el-message-box__headerbtn {
+  top: 0.05rem;
+  right: 0.05rem;
+}
+
+/* popconfirm 样式 */
+.del-path-confirm {
+  right: -0.12rem !important;
+}
+
+.del-path-confirm .el-popconfirm__icon {
+  font-size: 0.16rem;
+}
+
+.del-path-confirm .el-popper__arrow {
+  left: -0.12rem !important;
+}
+
+.del-path-confirm button {
+  color: var(--app-normal-bg);
+  border: 1px solid var(--app-normal-bg);
+  width: 0.48rem;
+  height: 0.24rem !important;
+}
+
+.del-path-confirm .el-button--primary {
+  background-color: var(--app-normal-bg);
+  color: var(--app-first-text);
+  margin-left: 0.08rem;
+}
+
+::-webkit-scrollbar {
+  width: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+/* 重置弹窗样式 */
+.el-overlay.is-message-box {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 9999 !important;
+}
+
+.el-message-box {
+  position: fixed !important;
+  top: 30% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+}

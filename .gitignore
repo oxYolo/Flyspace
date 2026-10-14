@@ -1,0 +1,10 @@
+.history
+node_modules
+.idea
+dist
+UAVIP
+UAVIP-test
+# 打包分析报告（由 rollup-plugin-visualizer 生成）
+stats.html
+
+components.d.ts

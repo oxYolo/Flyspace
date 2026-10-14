@@ -1,0 +1,360 @@
+/**
+ * @文件说明: 定义项目中自定义主题的公共变量
+ * @创建人: liaojiayan
+ * @创建时间: 2024-09-16 15:26:00
+ */
+
+/** 功能色----遵循用户色彩认知，用于表示不同状态 */
+// 黑色
+@app-black-color: #000000;
+// 白色
+@app-white-color: #ffffff;
+// 绿色
+@app-green-color: #00c9a5;
+// 黄色
+@app-yellow-color: #fbaa07;
+// 红色
+@app-red-color: #e93645;
+// 主题色
+@app-primary-color: #1273ef;
+// 禁止
+@app-disabled-color: #bbd3fb;
+// 悬浮
+@app-hover-color: #2883f5;
+// 激活
+@app-active-color: #0562d9;
+
+/** 基础色----无认知意义，仅做颜色区分，如标签、头像背景等 */
+@app-base-color-01: #1e9dff; // 图标外发光颜色
+@app-base-color-02: #43acfc; // 文字外发光颜色
+@app-base-color-03: #3569ff;
+@app-base-color-04: #b1cfff;
+@app-base-color-05: #d7dff5;
+@app-base-color-06: #bbd2fb;
+@app-base-color-07: #a0c6ff;
+@app-base-color-08: #007eff;
+@app-base-color-09: #fbdf22;
+
+/** 默认主题颜色变量 */
+// 一级文字/图标：标题
+@default-first-text: @app-white-color;
+// 二级文字/图标：内容
+@default-second-text-01: fade(@app-white-color, 90%);
+// 二级文字/图标：内容
+@default-second-text-02: fade(@app-white-color, 70%);
+// 三级文字/图标：内容
+@default-third-text: fade(@app-white-color, 50%);
+// 辅助文字颜色
+@default-assist-text: @app-disabled-color;
+// 其他文字颜色
+@default-other-text: @app-base-color-04;
+@default-other-text-01: fade(@app-base-color-04, 50%);
+@default-other-text-02: fade(@app-base-color-04, 90%);
+@default-other-text-03: fade(@app-base-color-06, 70%);
+@default-other-text-04: fade(@app-base-color-07, 90%);
+// 智能助手文字阴影
+@default-text-shadow: @app-base-color-06;
+@default-text-shadow-01: fade(@app-white-color, 50%);
+@default-text-shadow-02: fade(@app-base-color-06, 56%);
+// 深色底分割线
+@default-border-color: fade(@app-white-color, 20%);
+// 深色底分割线 - 01
+@default-border-color-01: fade(@app-white-color, 12%);
+// 深色底分割线 - 02
+@default-border-color-02: fade(@app-white-color, 6%);
+// 边框颜色
+@default-border-color-03: fade(@app-base-color-05, 70%);
+@default-border-color-04: @app-disabled-color;
+@default-border-color-05: #2983fd;
+@default-border-color-06: fade(@app-base-color-07, 90%);
+@default-border-color-07: #1273ef;
+// 面板底板背景颜色
+@default-panel-bg: fade(rgb(16, 21, 26), 100%);
+
+// 助手底板背景颜色
+@default-panel-bg-01: linear-gradient(
+  110deg,
+  rgba(31, 56, 85, 0.9),
+  rgba(9, 19, 30, 0.9)
+);
+@default-panel-bg-02: #001327;
+@default-panel-bg-03: #2983fd;
+@default-panel-bg-04: fade(@app-base-color-03, 20%);
+@default-panel-bg-05: fade(@app-base-color-03, 40%);
+@default-panel-bg-06: #1d3e64;
+@default-panel-bg-07: fade(#10151a, 40%);
+@default-panel-bg-08: fade(#10151a, 60%);
+
+// 数据录入底框背景颜色
+@default-input-bg: fade(#FFFFFF, 80%);
+// 数据录入板块背景颜色
+@default-input-bg-01: #22272b;
+// tab未选装饰底背景颜色
+@default-tab-bg: #4f555d;
+// 按钮禁止背景色
+@default-disabled-bg: @app-disabled-color;
+// 按钮悬浮背景色
+@default-hover-bg: @app-hover-color;
+// 按钮激活背景色
+@default-active-bg: @app-active-color;
+// 按钮Normal/主要按钮背景色
+@default-normal-bg: @app-primary-color;
+// 按钮Normal/主要按钮背景色 - 渐变稀释
+@default-normal-bg-01: fade(@app-primary-color, 10%);
+@default-normal-bg-02: fade(@app-primary-color, 30%);
+@default-normal-bg-03: fade(@app-hover-color, 20%);
+// 地图同屏分隔条渐变背景色
+@default-map-spliter-bg1: fade(@app-black-color, 10%);
+@default-map-spliter-bg2: #d2d2d2;
+// 标题渐变背景色
+@default-title-bg: linear-gradient(180deg, #fefefe 20%, #b6bfc6 100%);
+// 启动页进度文字颜色
+@default-progress-text-color: #b5e4ff;
+// 启动页加载失败文字颜色
+@default-load-failed-color: #e93645;
+// 启动页进度条背景色
+@default-progress-bg: linear-gradient(-90deg, #6cf5fa, #42baff, #3a7dff);
+//tree组件节点hover颜色
+@default-tree-hover-color: fade(@app-white-color, 16%);
+//tree组件节点标题颜色
+@default-tree-title-color: fade(@app-white-color, 90%);
+// 停靠标签激活背景色 #174784-#4f9af7
+@default-tag-active-bg: linear-gradient(#174784, #4f9af7);
+
+// 悬浮提示框背景色
+@default-tips-bg: #10151a;
+@default-tips-bg-01: fade(@default-tips-bg, 70%);
+@default-tips-bg-02: fade(@default-tips-bg, 85%);
+
+// 滚动条背景色
+@default-scrollbar-bg: #858585;
+
+// 选择框背景基色
+@default-select-bg-color: fade(@app-white-color, 30%);
+// 选择框激活状背景色
+@default-select-bg-color-01: #1273ef;
+// 进度条默认底色 - 0.4
+@default-white-color-a04: fade(@app-white-color, 40%);
+
+// 默认主题
+html[data-theme="default"] {
+  // Element Plus 暗黑主题变量覆盖--------------------------------------------------------
+
+  // 自定义主题变量--------------------------------------------------------
+  --app-primary-color: @app-primary-color;
+  --app-black-color: @app-black-color;
+  --app-white-color: @app-white-color;
+
+  // 面板底板背景颜色
+  --app-panel-bg: @default-panel-bg;
+  --app-panel-bg-01: @default-panel-bg-01;
+  --app-panel-bg-02: fade(@default-panel-bg-02, 50%);
+  --app-panel-bg-03: fade(@app-base-color-03, 20%);
+  --app-panel-bg-04: @default-panel-bg-04;
+  --app-panel-bg-05: @default-panel-bg-05;
+  --app-panel-bg-06: @default-panel-bg-06;
+  --app-panel-bg-07: @default-panel-bg-07;
+  --app-panel-bg-08: @default-panel-bg-08;
+
+  // 标题文本颜色
+  --app-title-text: @default-first-text;
+  // 一级文本/图标颜色
+  --app-first-text: @default-first-text;
+  // 二级文本/图标颜色1
+  --app-second-text-01: @default-second-text-01;
+  // 二级文本/图标颜色2
+  --app-second-text-02: @default-second-text-02;
+  // 三级文本/图标颜色
+  --app-third-text: @default-third-text;
+  // 辅助文本颜色
+  --app-assist-text: @default-assist-text;
+  // 其他文本颜色
+  --app-other-text: @default-other-text;
+  --app-other-text-01: @default-other-text-01;
+  --app-other-text-02: @default-other-text-02;
+  --app-other-text-03: @default-other-text-03;
+  --app-other-text-04: @default-other-text-04;
+  // 智能助手文字阴影
+  --app-text-shadow: @default-text-shadow;
+  --app-text-shadow-01: @default-text-shadow-01;
+
+  //  按钮禁止背景色
+  --app-disabled-bg: @default-disabled-bg;
+  //  按钮悬浮背景色
+  --app-hover-bg: @default-hover-bg;
+  //  按钮激活背景色
+  --app-active-bg: @default-active-bg;
+  //  按钮Normal/主要按钮背景色
+  --app-normal-bg: @default-normal-bg;
+  // 按钮Normal/主要按钮背景色 - 渐变稀释
+  --app-normal-bg-01: @default-normal-bg-01;
+  --app-normal-bg-02: @default-normal-bg-02;
+  --app-normal-bg-03: @default-normal-bg-03;
+  // 数据录入底框背景颜色
+  --app-input-bg: @default-input-bg;
+  // 数据录入板块背景颜色
+  --app-input-bg-01: @default-input-bg-01;
+  // 边界颜色
+  --app-border-color: @default-border-color;
+  // 淡化的边界颜色 - 01
+  --app-borer-color-01: @default-border-color-01;
+  // 淡化的边界颜色 - 02
+  --app-borer-color-02: @default-border-color-02;
+  // 边框颜色 - 03
+  --app-borer-color-03: @default-border-color-03;
+  --app-borer-color-04: @default-border-color-04;
+  --app-borer-color-05: @default-border-color-05;
+  --app-borer-color-06: @default-border-color-06;
+  --app-borer-color-07: @default-border-color-07;
+
+  // 标题渐变背景色
+  --app-title-bg: @default-title-bg;
+  //  地图同屏分隔条渐变背景色
+  --app-map-spliter-bg1: @default-map-spliter-bg1;
+  --app-map-spliter-bg2: @default-map-spliter-bg2;
+  // 启动页进度文字颜色
+  --app-progress-text-color: @default-progress-text-color;
+  // 启动页进度条颜色
+  --app-progress-bg: @default-progress-bg;
+  // 启动页加载失败颜色
+  --app-load-failed-color: @default-load-failed-color;
+
+  // 图标外发光颜色
+  --app-icon-shadow: @app-base-color-01;
+  // 文字外发光颜色
+  --app-text-shadow: @app-base-color-02;
+
+  //tree组件节点hover颜色
+  --app-tree-hover-color: @default-tree-hover-color;
+  //tree组件节点标题颜色
+  --app-tree-title-color: @default-tree-title-color;
+
+  // 停靠标签激活背景色
+  --app-tag-active-bg: @default-tag-active-bg;
+
+  // 悬浮提示框背景色
+  --app-tips-bg: @default-tips-bg;
+  --app-tips-bg-01: @default-tips-bg-01;
+  --app-tips-bg-02: @default-tips-bg-02;
+
+  //滚动条背景色
+  --app-scrollbar-bg: @default-scrollbar-bg;
+
+  // 选择框背景色
+  --app-select-bg-color: @default-select-bg-color;
+  --app-select-bg-color-01: @default-select-bg-color-01;
+  // 带透明度的白色
+  --app-white-color-a04: @default-white-color-a04;
+  // 遮罩颜色
+  --app-mask-color: fade(@default-tips-bg, 30%);
+}
+.el-pagination__sizes, .el-pagination__total {
+    color: #333 !important;
+    font-weight: normal;
+    margin-left: var(--el-pagination-item-gap);
+}
+
+.el-pagination__sizes, .el-pagination__total {
+    color: #333 !important;
+    font-weight: normal;
+    margin-left: var(--el-pagination-item-gap);
+}
+.el-pagination.is-background .btn-next, .el-pagination.is-background .btn-prev, .el-pagination.is-background .el-pager li {
+    background-color: #FFFFFF !important;
+    margin: 0 4px;
+}
+
+.el-pagination.is-background .btn-next, .el-pagination.is-background .btn-prev, .el-pagination.is-background .el-pager li {
+    background-color: #FFFFFF !important;
+    margin: 0 4px;
+}
+.el-pager li {
+    background: var(--el-pagination-bg-color);
+    border: none;
+    border-radius: var(--el-pagination-border-radius);
+    box-sizing: border-box;
+    color: #333333 !important;
+    cursor: pointer;
+    font-size: var(--el-pagination-font-size);
+    height: var(--el-pagination-button-height);
+    justify-content: center;
+    line-height: var(--el-pagination-button-height);
+    min-width: var(--el-pagination-button-width);
+    padding: 0 4px;
+    text-align: center;
+}
+.el-pagination__jump {
+    align-items: center;
+    color: #333333 !important;
+    display: flex;
+    font-weight: normal;
+    margin-left: var(--el-pagination-item-gap);
+}
+.el-select__placeholder {
+    color: #666 !important;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100%;
+    z-index: -1;
+}
+.el-input__inner {
+    -webkit-appearance: none;
+    background: none;
+    border: none;
+    box-sizing: border-box;
+    color: #333 !important;
+    flex-grow: 1;
+    font-size: inherit;
+    height: var(--el-input-inner-height);
+    line-height: var(--el-input-inner-height);
+    outline: none;
+    padding: 0;
+    width: 100%;
+}
+.el-select__wrapper {
+    align-items: center;
+    background-color:#FFF !important; /* Select 输入框背景色改为深灰色 */
+    box-shadow: none !important;
+    border: 1px solid #9DCBF9 !important; /* 边框颜色 */
+    border-radius: var(--el-border-radius-base);
+    box-sizing: border-box;
+    cursor: pointer;
+    display: flex;
+    font-size: 14px;
+    gap: 6px;
+    line-height: 24px;
+    min-height: 32px;
+    padding: 4px 12px;
+    position: relative;
+    text-align: left;
+    transform: translateZ(0);
+    transition: var(--el-transition-duration);
+}
+.el-select .el-input__inner {
+  background-color: #0076D6 !important;
+}
+.el-input {
+    --el-input-text-color: var(--el-text-color-regular);
+    --el-input-border: var(--el-border);
+    --el-input-hover-border: var(--el-border-color-hover);
+    --el-input-focus-border: var(--el-color-primary);
+    --el-input-transparent-border: 0 0 0 1px transparent inset;
+    --el-input-border-color: #DDDDDD !important;
+    --el-input-border-radius: var(--el-border-radius-base);
+    --el-input-bg-color: var(--el-fill-color-blank);
+    --el-input-icon-color: var(--el-text-color-placeholder);
+    --el-input-placeholder-color: var(--el-text-color-placeholder);
+    --el-input-hover-border-color: var(--el-border-color-hover);
+    --el-input-clear-hover-color: var(--el-text-color-secondary);
+    --el-input-focus-border-color: var(--el-color-primary);
+    --el-input-width: 100%;
+    --el-input-height: var(--el-component-size);
+    box-sizing: border-box;
+    display: inline-flex;
+    font-size: var(--el-font-size-base);
+    line-height: var(--el-input-height);
+    position: relative;
+    vertical-align: middle;
+    width: var(--el-input-width);
+}

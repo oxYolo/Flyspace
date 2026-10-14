@@ -1,0 +1,22 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    },
+    {
+      "path": "./tsconfig.app.json"
+    }
+  ],
+  "compilerOptions": {
+    "lib": ["es2022", "dom"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "public/*": ["public/*"]
+    },
+    "types": ["vite/client", "unplugin-auto-import/vite"],
+    "noImplicitAny": false,
+    "allowSyntheticDefaultImports": true
+  }
+}
