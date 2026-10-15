@@ -5,6 +5,8 @@
         返回
       </el-button>
       <div class="top-title">{{ title }}</div>
+      <span style="color: white;margin-left: 50px;">跟随相机:</span>
+      <el-switch v-model="followCamera"  @change="handleFollowCameraChange" />
     </div>
 
     <div class="data-panel">
@@ -60,11 +62,9 @@
             </div>
             <div class="data-item">
               <span class="label">航点</span>
-              <span class="value"
-                >{{ flightInfo.waypointsTotal }}/{{
-                  flightInfo.waypoints
-                }}</span
-              >
+              <span class="value">{{ flightInfo.waypointsTotal }}/{{
+                flightInfo.waypoints
+                }}</span>
             </div>
             <div class="data-item">
               <span class="label">里程</span>
@@ -120,25 +120,14 @@
       <span class="grid-code-label">北斗网格码:</span>
       <span class="grid-code-value">{{ currentGridCode }}</span>
       <span class="grid-code-level">(Level {{ beidouGridLevel }})</span>
-      <el-switch
-        v-model="showBeidouGrid"
-        @change="toggleBeidouGridVisibility"
-        active-color="#ff8100"
-        inactive-color="#dcdfe6"
-        class="grid-toggle-switch" />
+      <el-switch v-model="showBeidouGrid" @change="toggleBeidouGridVisibility" active-color="#ff8100"
+        inactive-color="#dcdfe6" class="grid-toggle-switch" />
     </div>
 
     <div v-if="totalDurationSeconds > 0" class="sim-progress-bar">
-      <el-slider
-        v-model="progressSeconds"
-        :min="0"
-        :max="totalDurationSeconds"
-        :step="0.1"
-        :show-tooltip="true"
-        :format-tooltip="formatProgressTooltip"
-        @input="handleProgressInput"
-        @change="handleProgressChange" />
-          <div class="sim-progress-time">
+      <el-slider v-model="progressSeconds" :min="0" :max="totalDurationSeconds" :step="0.1" :show-tooltip="true"
+        :format-tooltip="formatProgressTooltip" @input="handleProgressInput" @change="handleProgressChange" />
+      <div class="sim-progress-time">
         {{ formatHMS(progressSeconds) }} / {{ formatHMS(totalDurationSeconds) }}
       </div>
     </div>
@@ -213,6 +202,10 @@ const showBeidouGrid = ref(true);
 const totalDurationSeconds = ref(0);
 const progressSeconds = ref(0);
 const isSeeking = ref(false);
+const followCamera = ref(true);
+
+const FOLLOW_CAMERA_PITCH_DEGREES = -70;
+const FOLLOW_CAMERA_RANGE = 120;
 
 const formatSpeed = (v: number) => {
   if (!Number.isFinite(v)) return "0.0";
@@ -247,11 +240,79 @@ const bearingDeg = (lon1: number, lat1: number, lon2: number, lat2: number) => {
   const x =
     Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
     Math.sin(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.cos(toRad(lon2 - lon1));
+    Math.cos(toRad(lat2)) *
+    Math.cos(toRad(lon2 - lon1));
   const brng = Math.atan2(y, x);
   const deg = (brng * 180) / Math.PI;
   return (deg + 360) % 360;
+};
+
+const updateFollowCamera = (time: any) => {
+  if (!followCamera.value || !viewer?.camera || !sampledPosition || !time) return;
+
+  const position = sampledPosition.getValue(time);
+  if (!position) return;
+
+  const currentCartographic = Cesium.Cartographic.fromCartesian(position);
+  const longitude = Cesium.Math.toDegrees(currentCartographic.longitude);
+  const latitude = Cesium.Math.toDegrees(currentCartographic.latitude);
+  let heading = flightInfo.trackAngle;
+
+  if (stopTime && startTime) {
+    const lookAheadSeconds = 1;
+    let headingTime = Cesium.JulianDate.addSeconds(
+      time,
+      lookAheadSeconds,
+      new Cesium.JulianDate(),
+    );
+    if (Cesium.JulianDate.greaterThan(headingTime, stopTime)) {
+      headingTime = stopTime;
+    }
+
+    let headingPosition = sampledPosition.getValue(headingTime);
+    if (
+      !headingPosition ||
+      Cesium.Cartesian3.distance(position, headingPosition) < 0.1
+    ) {
+      headingTime = Cesium.JulianDate.addSeconds(
+        time,
+        -lookAheadSeconds,
+        new Cesium.JulianDate(),
+      );
+      if (Cesium.JulianDate.lessThan(headingTime, startTime)) {
+        headingTime = startTime;
+      }
+      headingPosition = sampledPosition.getValue(headingTime);
+    }
+
+    if (headingPosition) {
+      const nextCartographic = Cesium.Cartographic.fromCartesian(headingPosition);
+      heading = bearingDeg(
+        longitude,
+        latitude,
+        Cesium.Math.toDegrees(nextCartographic.longitude),
+        Cesium.Math.toDegrees(nextCartographic.latitude),
+      );
+    }
+  }
+
+  viewer.camera.lookAt(
+    position,
+    new Cesium.HeadingPitchRange(
+      Cesium.Math.toRadians(heading),
+      Cesium.Math.toRadians(FOLLOW_CAMERA_PITCH_DEGREES),
+      FOLLOW_CAMERA_RANGE,
+    ),
+  );
+  viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
+};
+
+const handleFollowCameraChange = (enabled: boolean) => {
+  if (enabled && viewer?.clock?.currentTime) {
+    updateFollowCamera(viewer.clock.currentTime);
+  } else if (!enabled && routeEntity && viewer) {
+    viewer.flyTo(routeEntity, { duration: 1.2 }).catch(() => { });
+  }
 };
 
 const getViewer = () => (window as any).__cesiumViewer;
@@ -326,15 +387,15 @@ const highlightCurrentGrid = (lon: number, lat: number, height: number) => {
           "current-grid-highlight",
           gridInfo.bounds,
           {
-            fillColor: "#ff8100",
-            fillAlpha: 0.2,
-            outlineColor: "#ff8100",
-            outlineWidth: 2,
+            fillColor: "#F7F905",
+            fillAlpha: 0.4,
+            outlineColor: "#F7F90500",
+            outlineWidth: 1,
           },
         );
       }
     }
-  } catch {}
+  } catch { }
 };
 
 const toggleBeidouGridVisibility = (visible: boolean) => {
@@ -350,7 +411,7 @@ const toggleBeidouGridVisibility = (visible: boolean) => {
     if (highlightDataSource) {
       highlightDataSource.show = visible;
     }
-  } catch {}
+  } catch { }
 };
 
 const addAllTrajectoryGrids = (
@@ -362,7 +423,7 @@ const addAllTrajectoryGrids = (
     visitedGrids.clear();
     try {
       mapManager.removeDataSource("trajectory-grids");
-    } catch {}
+    } catch { }
 
     const addGridByInfo = (gridInfo: any) => {
       if (!gridInfo?.gridIndex || !gridInfo?.bounds) return;
@@ -370,10 +431,10 @@ const addAllTrajectoryGrids = (
       if (visitedGrids.has(key)) return;
       visitedGrids.add(key);
       mapManager.addBeidouGridCell("trajectory-grids", gridInfo.bounds, {
-        fillColor: "#00FF00",
-        fillAlpha: 0,
-        outlineColor: "#00FF00",
-        outlineWidth: 1,
+        fillColor: "#B1EDAF",
+        fillAlpha: 0.6, // 透明填充
+        outlineColor: "#00FF0000",
+        outlineWidth: 0,
         show: true,
       });
     };
@@ -446,7 +507,7 @@ const addAllTrajectoryGrids = (
     }
 
     toggleBeidouGridVisibility(showBeidouGrid.value);
-  } catch {}
+  } catch { }
 };
 
 const clearSimulation = () => {
@@ -462,12 +523,12 @@ const clearSimulation = () => {
   if (droneEntity && viewer?.entities) {
     try {
       viewer.entities.remove(droneEntity);
-    } catch {}
+    } catch { }
   }
   if (routeEntity && viewer?.entities) {
     try {
       viewer.entities.remove(routeEntity);
-    } catch {}
+    } catch { }
   }
   droneEntity = null;
   routeEntity = null;
@@ -476,7 +537,7 @@ const clearSimulation = () => {
     try {
       mapManager.removeDataSource("trajectory-grids");
       mapManager.clearBeidouGridCellHighlight("current-grid-highlight");
-    } catch {}
+    } catch { }
   }
   visitedGrids.clear();
   currentHighlightedGrid.value = null;
@@ -595,7 +656,11 @@ const startSimulation = () => {
   viewer.clock.multiplier = 1;
   viewer.clock.shouldAnimate = true;
 
-  viewer.flyTo(routeEntity, { duration: 1.2 }).catch(() => {});
+  if (followCamera.value) {
+    updateFollowCamera(startTime);
+  } else {
+    viewer.flyTo(routeEntity, { duration: 1.2 }).catch(() => { });
+  }
   addAllTrajectoryGrids(points);
 
   tickHandler = (clock: any) => {
@@ -610,6 +675,7 @@ const startSimulation = () => {
     flightInfo.latitude = formatNumber(lat, 6);
     flightInfo.altitude = formatNumber(alt, 2);
     flightInfo.elevation = Number.isFinite(alt) ? Number(alt.toFixed(0)) : 0;
+    updateFollowCamera(clock.currentTime);
     highlightCurrentGrid(lon, lat, alt);
 
     const elapsed = Cesium.JulianDate.secondsDifference(
@@ -684,6 +750,7 @@ const setClockByProgressSeconds = (seconds: number) => {
   const t = Cesium.JulianDate.addSeconds(startTime, s, new Cesium.JulianDate());
   viewer.clock.currentTime = t;
   progressSeconds.value = s;
+  updateFollowCamera(t);
 };
 
 const handleProgressInput = (val: number) => {
@@ -807,12 +874,14 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     width: 45%;
+
     .speed-section {
       flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
+
       .speed-value {
         color: #4b9cfb;
         font-size: 24px;
@@ -862,6 +931,7 @@ onUnmounted(() => {
     display: flex;
 
     &:last-child {
+
       .label,
       .value {
         border-bottom: 1px solid #1491cd;
@@ -919,7 +989,7 @@ onUnmounted(() => {
 .sim-progress-bar {
   display: flex;
   align-items: center;
-  
+
   position: fixed;
   left: 64%;
   bottom: 6px;
