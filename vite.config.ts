@@ -79,6 +79,11 @@ export default defineConfig(({ command, mode }) => ({
         changeOrigin: true,
         secure: false,
       },
+      "/data": { // 禁飞区管理-练习功能：禁飞区列表查询接口
+        target: 'http://223.75.173.128:19500',
+        changeOrigin: true,
+        secure: false,
+      },
     }
   },
   plugins: [

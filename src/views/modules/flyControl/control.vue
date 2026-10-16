@@ -34,6 +34,9 @@
         <component :is="currentContentComponent" />
       </div>
     </div>
+
+    <!-- 禁飞区管理面板：航线库页面右侧 -->
+    <NoFlyZonePanel v-if="activeMenuItem === 'route'" />
   </div>
 </template>
 
@@ -61,6 +64,10 @@ const MediaPanel = defineAsyncComponent(
 );
 const PlanPanel = defineAsyncComponent(
   () => import("@/views/modules/flyControl/Plan/PlanPanel.vue"),
+);
+// 禁飞区管理面板（练习功能）：航线库右侧
+const NoFlyZonePanel = defineAsyncComponent(
+  () => import("@/views/modules/flyControl/RouteLibrary/components/NoFlyZonePanel.vue"),
 );
 
 const router = useRouter();
