@@ -1,14 +1,25 @@
 import { getToken } from "@/utils/auth";
 
 // 智能体后端网关地址（走 Vite 代理 /gn-agent，避免跨域；后续切换接口时改这里 + vite.config.ts 代理 target）
-const AI_API_BASE = "/gn-agent/v1".replace(/\/+$/, "");
+const AI_API_BASE = "/ai/v1".replace(/\/+$/, "");
 export const AI_USER_ID = 2;
 
 export interface ChatStreamPayload {
+  // request 始终是字符串；低空确认、候选选择等结构化对象需先 JSON.stringify。
   request: string;
   session_id?: string | null;
-  user_id?: number;
   agent_type?: string;
+  files?: Array<
+    | string
+    | {
+        url: string;
+        resource_id?: string;
+        name?: string;
+        data_type?: "raster" | "vector" | "table" | "unknown";
+        format?: string;
+        object_key?: string;
+      }
+  >;
 }
 
 export interface SseEvent {
@@ -44,10 +55,9 @@ export const openAiChatStream = async (
       "Content-Type": "application/json",
       ...getAuthHeaders(),
     },
-    body: JSON.stringify({
-      ...payload,
-      user_id: AI_USER_ID,
-    }),
+    // 聊天接口通过 Bearer token 识别用户，当前协议不再传 user_id。
+    // request 内层如果是交互对象，也必须保持为字符串，不能直接传对象。
+    body: JSON.stringify(payload),
     signal,
   });
 
@@ -61,6 +71,43 @@ export const openAiChatStream = async (
     throw new Error("AI 对话未返回可读取的数据流");
   }
   return response;
+};
+
+export const transcribeAiSpeech = async (
+  audio: Blob,
+  { signal }: { signal?: AbortSignal } = {},
+): Promise<{ text: string }> => {
+  // 接口接收音频原始字节；只保留 MIME 主类型，兼容带 codec 参数的浏览器录音格式。
+  const contentType = audio.type.split(";")[0] || "audio/webm";
+  const response = await fetch(`${AI_API_BASE}/speech/transcribe`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": contentType,
+      ...getAuthHeaders(),
+    },
+    body: audio,
+    signal,
+  });
+
+  if (!response.ok) {
+    const data = await parseResponseBody(response);
+    const detail =
+      typeof data === "string"
+        ? data
+        : data?.message || data?.msg || data?.detail;
+    const error = new Error(
+      detail || `语音转写失败（${response.status}）`,
+    ) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
+  }
+
+  const data = await response.json();
+  if (typeof data?.text !== "string") {
+    throw new Error("语音转写接口未返回有效文本");
+  }
+  return { text: data.text };
 };
 
 export const stopAiAgent = async (messageId: string | number | null = null) => {

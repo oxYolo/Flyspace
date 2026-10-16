@@ -33,10 +33,17 @@
       <div class="search-conditions-wrapper">
         <div class="search-conditions-header">
           <el-input class="header-search-input" v-model="searchForm.routeName" placeholder="按航线名称搜索" clearable
-            @clear="handleSearch" @keyup.enter="handleSearch" />
-          <!-- 搜索图标，点击切换搜索框显示 -->
-          <el-icon v-tooltip="'搜索'" :size="20" class="action-icon" @click="handleSearch">
-            <Search />
+            @clear="handleSearch" @keyup.enter="handleSearch">
+            <template #suffix>
+              <el-icon v-tooltip="'搜索'" class="search-input-icon" @click="handleSearch">
+                <Search />
+              </el-icon>
+            </template>
+          </el-input>
+          <el-icon v-tooltip="'批量删除航线'" :size="20" class="action-icon deleteIcon"
+            :class="{ 'is-disabled': selectedRouteIds.length === 0 || isDeleting }"
+            @click="handleBatchDelete">
+            <Delete />
           </el-icon>
         </div>
       </div>
@@ -46,6 +53,8 @@
         <!-- 通过 v-for 渲染航线卡片 -->
         <div v-for="route in routes" :key="route.routeId" class="route-card"
           :class="{ active: selectedRouteId === route.routeId }" @click.stop="selectRoute(route.routeId)">
+          <el-checkbox v-model="selectedRouteIds" :value="route.id" class="route-select-checkbox"
+            :disabled="route.locked" @click.stop />
           <div v-tooltip="route.title" class="card-title">
             {{ route.title }}
           </div>
@@ -174,6 +183,7 @@ import RouteConfidencePanel from "./components/RouteConfidencePanel.vue";
 import {
   $addflight,
   $removeflight,
+  $batchRemoveflight,
   $editflight,
   $exportflight,
   $saveFlightPoints,
@@ -181,7 +191,7 @@ import {
   $saveRouteGrids,
   $getRouteConfidenceScore,
 } from "@/api/flyControl/flight";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import emitter from "@/stores/mitt";
 import { CesiumMapManager } from "@/map-system";
 
@@ -255,6 +265,7 @@ const searchForm = ref<{ routeName: string }>({ routeName: "" });
 
 // 示例航线数据数组
 const routes = ref<any[]>([]);
+const selectedRouteIds = ref<Array<string | number>>([]);
 
 // 触发搜索（远端接口筛选）
 const handleSearch = () => {
@@ -1827,6 +1838,8 @@ async function getAllflight(flag: boolean, routeName?: string) {
   try {
     const { data, lineData } = await GetAllFlight(flag, pageOptions, routeName);
     routes.value = data;
+    const routeIds = new Set(data.map((route: any) => route.id));
+    selectedRouteIds.value = selectedRouteIds.value.filter((id) => routeIds.has(id));
     if (flag) {
       const targetRoute = data.find(
         (item: any) => item.title == currentRoute.value.routeName,
@@ -1850,6 +1863,49 @@ async function getAllflight(flag: boolean, routeName?: string) {
     routeListLoading.value = false;
   }
 }
+
+const handleBatchDelete = async () => {
+  if (isDeleting.value) return;
+  if (selectedRouteIds.value.length === 0) {
+    ElMessage.warning("请先选择要删除的航线");
+    return;
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedRouteIds.value.length} 条航线吗？此操作不可恢复。`,
+      "批量删除航线",
+      {
+        confirmButtonText: "确定删除",
+        cancelButtonText: "取消",
+        type: "warning",
+      },
+    );
+  } catch {
+    return;
+  }
+
+  isDeleting.value = true;
+  try {
+    const res: any = await $batchRemoveflight([...selectedRouteIds.value]);
+    if (res?.code !== 200) {
+      throw new Error(res?.msg || "批量删除航线失败");
+    }
+    const selectedIds = new Set(selectedRouteIds.value);
+    if (currentSelectedRoute.value?.id && selectedIds.has(currentSelectedRoute.value.id)) {
+      clearRouteLayersWithGrids();
+      selectedRouteId.value = null;
+      currentSelectedRoute.value = {};
+    }
+    selectedRouteIds.value = [];
+    ElMessage.success("航线已成功删除");
+    await getAllflight(false, searchForm.value.routeName);
+  } catch (e: any) {
+    ElMessage.error(e?.message || "批量删除航线失败");
+  } finally {
+    isDeleting.value = false;
+  }
+};
 
 onMounted(async () => {
   await getAllflight(false);
@@ -2229,6 +2285,12 @@ const locateRoute = (route: RouteDataItem) => {
   }
 }
 
+.action-icon.is-disabled {
+  color: #666;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .deleteIcon :hover {
   color: #f56c6c;
   background-color: rgba(245, 108, 108, 0.12);
@@ -2237,7 +2299,7 @@ const locateRoute = (route: RouteDataItem) => {
 .route-list {
   flex-grow: 1;
   /* 占据剩余空间 */
-  padding: 10px;
+  padding: 10px 0px;
   /* 列表内边距 */
   overflow-y: auto;
   /* 内容超出时允许垂直滚动 */
@@ -2263,6 +2325,22 @@ const locateRoute = (route: RouteDataItem) => {
     background-color 0.2s ease,
     border-color 0.2s ease;
   /* 添加过渡效果 */
+}
+
+:deep(.route-card .el-checkbox__inner) {
+  background-color: transparent
+}    
+
+.route-select-checkbox {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+}
+
+.route-card .card-title,
+.route-card .card-meta {
+  margin-left: 28px;
 }
 
 .route-card:hover {
@@ -2348,7 +2426,7 @@ const locateRoute = (route: RouteDataItem) => {
   top: 10px;
   right: 10px;
   display: flex;
-  gap: 10px;
+  gap: 5px;
   /* 操作图标间距 */
 }
 
@@ -2375,8 +2453,21 @@ const locateRoute = (route: RouteDataItem) => {
   .search-conditions-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 10px;
+  }
+
+  .header-search-input {
+    flex: 1;
+  }
+
+  .search-input-icon {
+    cursor: pointer;
+    color: #aaa;
+
+    &:hover {
+      color: #fff;
+    }
   }
 }
 

@@ -159,7 +159,7 @@ li {
 }
 
 .el-message-box__container {
-  text-align: center !important;
+  /* text-align: center !important; */
 }
 
 .el-message-box__content {

@@ -74,8 +74,8 @@ export default defineConfig(({ command, mode }) => ({
         changeOrigin: true,
         secure: false,
       },
-      "/gn-agent": { // 智能体对话（SSE 流式），避免浏览器跨域
-        target: 'http://10.101.240.85:8000',
+      "/ai": { // 智能体对话（SSE 流式），避免浏览器跨域
+        target: 'http://223.75.173.128:48000',
         changeOrigin: true,
         secure: false,
       },

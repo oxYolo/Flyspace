@@ -5,8 +5,8 @@
         返回
       </el-button>
       <div class="top-title">{{ title }}</div>
-      <span style="color: white;margin-left: 50px;">跟随相机:</span>
-      <el-switch v-model="followCamera"  @change="handleFollowCameraChange" />
+      <span style="color: white;font-size: 13px;">跟随相机:</span>
+      <el-switch v-model="followCamera"  @change="handleFollowCameraChange" size="small" />
     </div>
 
     <div class="data-panel">

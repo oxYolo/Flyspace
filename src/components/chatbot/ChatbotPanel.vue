@@ -17,10 +17,10 @@
           <img :src="chatbotAvatar" alt="" />
         </div>
         <div>
-          <h2 class="chatbot-panel__title">智能问答</h2>
+          <h2 class="chatbot-panel__title">低空智飞助手</h2>
           <div class="chatbot-panel__status">
             <!-- <span class="chatbot-panel__status-dot"></span> -->
-            <span>XXXXXXX</span>
+            <span>我是您的平台AI数字人，24小时在线</span>
           </div>
         </div>
       </div>
@@ -48,7 +48,19 @@
       ref="messagesRef"
       class="chatbot-panel__messages"
       @scroll.passive="handleMessagesScroll">
-      <div class="chatbot-panel__welcome">你好，我是平台智能助手。</div>
+      <div class="chatbot-panel__welcome">您好，我是低空智飞助手，召唤即现，掌控全域！支持低空政策答疑、一键飞行，可接收各类飞行任务指令。即刻开启，体验从数据分析到任务执行的无缝协同。</div>
+      <div v-if="!messages.length" class="chatbot-panel__built-in">
+        <div class="chatbot-panel__built-in-title">您可以这样问我</div>
+        <button
+          v-for="question in builtInQuestions"
+          :key="question"
+          class="chatbot-panel__built-in-question"
+          type="button"
+          :disabled="loading || stopping"
+          @click="sendBuiltInQuestion(question)">
+          {{ question }}
+        </button>
+      </div>
 
       <div
         v-for="message in messages"
@@ -133,50 +145,16 @@
               message.clarification
             "
             class="chatbot-panel__clarification">
-            <!-- <div class="chatbot-panel__clarification-title">需要你的确认</div> -->
             <p
               v-if="clarificationText(message.clarification)"
               class="chatbot-panel__clarification-title">
               {{ clarificationText(message.clarification) }}
             </p>
-
-            <template v-if="message.clarification.type === 'plan_review'">
-              <ol class="chatbot-panel__plan-list">
-                <li
-                  v-for="(step, index) in message.clarification.steps || []"
-                  :key="step.id || `${message.id}-plan-${index}`">
-                  <strong>{{ step.title || `步骤 ${index + 1}` }}</strong>
-                  <span v-if="step.step && step.step !== step.title">{{
-                    step.step
-                  }}</span>
-                </li>
-              </ol>
-              <div class="chatbot-panel__clarification-actions">
-                <button
-                  type="button"
-                  :disabled="
-                    loading || stopping || !isActiveClarification(message)
-                  "
-                  @click="submitPlanReview(message, 'approve')">
-                  确认执行
-                </button>
-                <span>如需修改，请在下方输入修改意见后发送</span>
-              </div>
-            </template>
-
-            <ul
-              v-else-if="
-                clarificationQuestions(message.clarification).length
-              "
-              class="chatbot-panel__question-list">
-              <li
-                v-for="question in clarificationQuestions(
-                  message.clarification,
-                )"
-                :key="question.field">
-                {{ question.question }}
-              </li>
-            </ul>
+            <ChatbotClarification
+              :clarification="message.clarification"
+              :disabled="loading || stopping"
+              :active="isActiveClarification(message)"
+              @submit="submitClarification(message, $event)" />
           </div>
         </div>
         <div
@@ -188,43 +166,31 @@
     </section>
 
     <footer class="chatbot-panel__composer">
-      <textarea
-        v-model="inputValue"
-        class="chatbot-panel__input"
-        maxlength="500"
-        :placeholder="composerPlaceholder"
-        :disabled="loading || stopping"
-        @keydown.enter.exact.prevent="sendMessage()"></textarea>
-      <div class="chatbot-panel__composer-bottom">
-        <div class="chatbot-panel__agent-tabs">
-          <button
-            type="button"
-            class="chatbot-panel__agent-tab"
-            :class="{ 'is-active': agentType === 'policy' }"
-            @click="selectAgent('policy')">
-            政策答疑
-          </button>
-          <button
-            type="button"
-            class="chatbot-panel__agent-tab"
-            :class="{ 'is-active': agentType === 'route' }"
-            @click="selectAgent('route')">
-            航线规划智能体
-          </button>
-        </div>
+      <div class="chatbot-panel__input-wrap">
+        <textarea
+          v-model="inputValue"
+          class="chatbot-panel__input"
+          maxlength="500"
+          :placeholder="composerPlaceholder"
+          :disabled="loading || stopping || isRecording || isTranscribing"
+          @keydown.enter.exact.prevent="sendMessage()"></textarea>
         <button
-          class="chatbot-panel__send"
+          class="chatbot-panel__voice"
+          :class="{
+            'is-recording': isRecording,
+            'is-stop': loading,
+            'is-send': !loading && inputValue.trim(),
+          }"
           type="button"
-          :disabled="stopping || (!loading && !inputValue.trim())"
-          :title="loading ? '停止生成' : '发送消息'"
-          :aria-label="loading ? '停止生成' : '发送消息'"
-          :class="{ 'is-stop': loading }"
-          @click="loading ? stopMessage() : sendMessage()">
-          <span
-            v-if="loading"
-            style="width: 10px; height: 10px; background: #fff; border-radius: 2px"></span>
-          <el-icon v-else><Promotion /></el-icon>
-          <span>{{ loading ? "停止" : "发送" }}</span>
+          :disabled="stopping || isTranscribing"
+          :title="composerActionLabel"
+          :aria-label="composerActionLabel"
+          :aria-pressed="isRecording"
+          @click="handleComposerAction">
+          <el-icon v-if="isTranscribing" class="is-loading"><Loading /></el-icon>
+          <span v-else-if="loading" class="chatbot-panel__stop-icon"></span>
+          <el-icon v-else-if="inputValue.trim()"><Top /></el-icon>
+          <el-icon v-else><Microphone /></el-icon>
         </button>
       </div>
     </footer>
@@ -233,45 +199,33 @@
 
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import {
   ArrowDown,
   ArrowRight,
   Close,
-  Delete,
   Loading,
-  Promotion,
+  Microphone,
+  Top,
 } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 import { marked } from "marked";
 import chatbotAvatar from "@/assets/icons/chatbot.gif";
 import {
-  AI_USER_ID,
   openAiChatStream,
   readSseEvents,
   stopAiAgent,
+  transcribeAiSpeech,
 } from "@/api/chatbot";
 import { useChatbotStore } from "@/stores/chatbot";
+import ChatbotClarification from "./ChatbotClarification.vue";
+import type {
+  ChatbotClarification as ChatbotClarificationData,
+  ClarificationSubmission,
+} from "./types";
 
 const chatbot = useChatbotStore();
-
-interface ClarificationStep {
-  id?: string;
-  title?: string;
-  step?: string;
-  skill_name?: string;
-}
-
-interface Clarification {
-  type: "plan_review" | "missing_fields" | string;
-  assistantMessageId?: number;
-  taskRunId?: string;
-  taskTypeId?: string;
-  steps?: ClarificationStep[];
-  friendly_message?: string;
-  message?: string;
-  missing_fields?: string[];
-  field_questions?: Record<string, string>;
-}
+const router = useRouter();
 
 interface ChatMessage {
   id: number;
@@ -290,25 +244,46 @@ interface ChatMessage {
   sessionId?: string | null;
   messageId?: string | number | null;
   runState?: string;
-  clarification?: Clarification | null;
+  clarification?: ChatbotClarificationData | null;
   awaitingClarification?: boolean;
   isError?: boolean;
 }
 
+interface VoiceRecordingSession {
+  recorder: MediaRecorder;
+  stream: MediaStream;
+  chunks: Blob[];
+  size: number;
+  discard: boolean;
+  tooLarge: boolean;
+}
+
+const MAX_SPEECH_AUDIO_BYTES = 7_000_000;
+const MAX_COMPOSER_LENGTH = 500;
+const builtInQuestions = [
+  "平台累计巡护里程和累计飞行时长是多少？",
+  "总共完成的巡检面积是多少平方公里？",
+  "使用中试谷无人机、中试谷水域巡检航线，识别水域漂浮物。",
+];
 const messagesRef = ref<HTMLElement | null>(null);
 const inputValue = ref("");
 const loading = ref(false);
 const stopping = ref(false);
+const isRecording = ref(false);
+const isTranscribing = ref(false);
 const messages = ref<ChatMessage[]>([]);
 const shouldFollowScroll = ref(true);
 const sessionId = ref<string | null>(null);
-const currentClarification = ref<Clarification | null>(null);
+const currentClarification = ref<ChatbotClarificationData | null>(null);
 const resizing = ref(false);
 let requestController: AbortController | null = null;
 let messageId = 0;
 let typingQueue: Promise<unknown> = Promise.resolve();
 let typingError: unknown = null;
 let stopResizeListeners: (() => void) | null = null;
+let recordingSession: VoiceRecordingSession | null = null;
+let speechRequestController: AbortController | null = null;
+let voiceGeneration = 0;
 
 const composerPlaceholder = computed(() => {
   if (currentClarification.value?.type === "plan_review")
@@ -317,11 +292,24 @@ const composerPlaceholder = computed(() => {
     return "请补充所需信息...";
   return "请输入你的问题...";
 });
+const composerActionLabel = computed(() => {
+  if (isTranscribing.value) return "正在转写";
+  if (loading.value) return "停止生成";
+  if (inputValue.value.trim()) return "发送消息";
+  if (isRecording.value) return "停止录音";
+  return "语音转文字";
+});
 
 // 当前智能体类型：policy 政策答疑 / route 航线规划 / null 未选中
 const agentType = ref<"policy" | "route" | null>(null);
 const selectAgent = (type: "policy" | "route") => {
-  if (loading.value || stopping.value) return;
+  if (
+    loading.value ||
+    stopping.value ||
+    isRecording.value ||
+    isTranscribing.value
+  )
+    return;
   // 再次点击已选中项则取消选中
   agentType.value = agentType.value === type ? null : type;
   // 切换智能体后隔离会话，避免上下文串台
@@ -338,7 +326,30 @@ const handleMessagesScroll = () => {
   shouldFollowScroll.value = isAtBottom(messagesRef.value);
 };
 
+const releaseStream = (stream: MediaStream) => {
+  stream.getTracks().forEach((track) => track.stop());
+};
+
+const cancelVoiceInput = () => {
+  // 关闭或重置聊天时丢弃尚未完成的录音和转写，并立即释放麦克风。
+  voiceGeneration += 1;
+  speechRequestController?.abort();
+  speechRequestController = null;
+  isTranscribing.value = false;
+
+  const session = recordingSession;
+  if (!session) return;
+  session.discard = true;
+  if (session.recorder.state !== "inactive") {
+    session.recorder.stop();
+  }
+  releaseStream(session.stream);
+  recordingSession = null;
+  isRecording.value = false;
+};
+
 const newChat = () => {
+  cancelVoiceInput();
   requestController?.abort();
   requestController = null;
   loading.value = false;
@@ -349,6 +360,205 @@ const newChat = () => {
   typingQueue = Promise.resolve();
   typingError = null;
   shouldFollowScroll.value = true;
+};
+
+const transcribeRecording = async (audio: Blob) => {
+  if (!audio.size) {
+    ElMessage.warning("没有录到有效音频，请重试");
+    return;
+  }
+  if (audio.size > MAX_SPEECH_AUDIO_BYTES) {
+    ElMessage.warning("录音超过 7 MB，请缩短录音后重试");
+    return;
+  }
+
+  const controller = new AbortController();
+  speechRequestController = controller;
+  isTranscribing.value = true;
+  try {
+    const result = await transcribeAiSpeech(audio, {
+      signal: controller.signal,
+    });
+    if (controller.signal.aborted) return;
+
+    const recognizedText = result.text.trim();
+    if (!recognizedText) {
+      ElMessage.warning("没有识别到语音内容，请重试");
+      return;
+    }
+
+    const existingText = inputValue.value;
+    const separator =
+      existingText && !/\s$/.test(existingText) ? " " : "";
+    const availableLength = MAX_COMPOSER_LENGTH - existingText.length;
+    const acceptedCharacters: string[] = [];
+    let acceptedLength = 0;
+    for (const character of `${separator}${recognizedText}`) {
+      if (acceptedLength + character.length > availableLength) break;
+      acceptedCharacters.push(character);
+      acceptedLength += character.length;
+    }
+    inputValue.value = existingText + acceptedCharacters.join("");
+    if (acceptedLength < `${separator}${recognizedText}`.length) {
+      ElMessage.warning("识别内容已截断，输入框最多支持 500 个字符");
+    } else {
+      ElMessage.success("语音转写完成，请检查后发送");
+    }
+  } catch (error) {
+    const err = error as Error & { name?: string; status?: number };
+    if (err.name === "AbortError") return;
+    const messageByStatus: Record<number, string> = {
+      401: "登录状态无效，请重新登录后再试",
+      413: "录音文件超过服务端大小限制",
+      415: "当前录音格式暂不支持",
+      502: "语音识别服务暂时不可用",
+      503: "语音识别服务尚未配置",
+    };
+    const errorText = err.message || "";
+    const noWords =
+      errorText.includes("ASR_RESPONSE_HAVE_NO_WORDS") ||
+      errorText.includes("没有识别到有效词");
+
+    if (noWords) {
+      // 百炼返回该错误码时，通常表示录音成功上传但没有识别出人声，
+      // 不是聊天接口参数错误；提示用户检查麦克风和录音内容即可。
+      ElMessage.warning("没有识别到清晰语音，请靠近麦克风后重新录音");
+    } else {
+      ElMessage.error(
+        (err.status && messageByStatus[err.status]) ||
+          errorText ||
+          "语音转写失败，请重试",
+      );
+    }
+  } finally {
+    if (speechRequestController === controller) {
+      speechRequestController = null;
+      isTranscribing.value = false;
+    }
+  }
+};
+
+const startVoiceRecording = async () => {
+  if (
+    loading.value ||
+    stopping.value ||
+    isRecording.value ||
+    isTranscribing.value
+  )
+    return;
+  if (
+    !navigator.mediaDevices?.getUserMedia ||
+    typeof MediaRecorder === "undefined"
+  ) {
+    ElMessage.error("当前浏览器无法录音，请使用支持录音的 Chrome");
+    return;
+  }
+
+  const generation = ++voiceGeneration;
+  let stream: MediaStream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (error) {
+    if (generation !== voiceGeneration) return;
+    const err = error as Error;
+    const message =
+      err.name === "NotAllowedError" || err.name === "SecurityError"
+        ? "麦克风未授权，请检查浏览器站点权限"
+        : "无法访问麦克风，请检查录音设备";
+    ElMessage.error(message);
+    return;
+  }
+
+  if (generation !== voiceGeneration) {
+    releaseStream(stream);
+    return;
+  }
+
+  const mimeType = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+  ].find((type) => MediaRecorder.isTypeSupported(type));
+
+  try {
+    const recorder = new MediaRecorder(
+      stream,
+      mimeType ? { mimeType } : undefined,
+    );
+    const session: VoiceRecordingSession = {
+      recorder,
+      stream,
+      chunks: [],
+      size: 0,
+      discard: false,
+      tooLarge: false,
+    };
+    recordingSession = session;
+
+    recorder.ondataavailable = (event) => {
+      if (!event.data.size || session.discard) return;
+      if (session.size + event.data.size > MAX_SPEECH_AUDIO_BYTES) {
+        session.tooLarge = true;
+        recorder.stop();
+        return;
+      }
+      session.chunks.push(event.data);
+      session.size += event.data.size;
+    };
+
+    recorder.onerror = () => {
+      session.discard = true;
+      if (recorder.state !== "inactive") recorder.stop();
+      ElMessage.error("录音发生错误，请重试");
+    };
+
+    recorder.onstop = () => {
+      releaseStream(stream);
+      if (recordingSession === session) {
+        recordingSession = null;
+        isRecording.value = false;
+      }
+      if (session.discard) return;
+      if (session.tooLarge) {
+        ElMessage.warning("录音超过 7 MB，请缩短录音后重试");
+        return;
+      }
+
+      // MediaRecorder 的最后一个音频片段会在 stop 事件前送达。
+      const audio = new Blob(session.chunks, {
+        type: recorder.mimeType || session.chunks[0]?.type || "audio/webm",
+      });
+      void transcribeRecording(audio);
+    };
+
+    recorder.start(1000);
+    isRecording.value = true;
+  } catch (error) {
+    releaseStream(stream);
+    recordingSession = null;
+    isRecording.value = false;
+    ElMessage.error(
+      error instanceof Error ? error.message : "无法启动录音，请重试",
+    );
+  }
+};
+
+const stopVoiceRecording = () => {
+  const session = recordingSession;
+  if (!session || session.recorder.state === "inactive") return;
+  session.recorder.stop();
+};
+
+const handleComposerAction = () => {
+  if (stopping.value || isTranscribing.value) return;
+  if (loading.value) {
+    stopMessage();
+  } else if (inputValue.value.trim()) {
+    void sendMessage();
+  } else if (isRecording.value) {
+    stopVoiceRecording();
+  } else {
+    void startVoiceRecording();
+  }
 };
 
 const startResize = (event: PointerEvent) => {
@@ -404,19 +614,8 @@ const stopMessage = () => {
     });
 };
 
-const clarificationText = (clarification: Clarification | null) =>
+const clarificationText = (clarification: ChatbotClarificationData | null) =>
   clarification?.friendly_message || clarification?.message || "";
-
-const clarificationQuestions = (clarification: Clarification | null) => {
-  const fields = Array.isArray(clarification?.missing_fields)
-    ? clarification!.missing_fields!
-    : [];
-  const questions = clarification?.field_questions || {};
-  return fields.map((field) => ({
-    field,
-    question: questions[field] || `请补充：${field}`,
-  }));
-};
 
 const isActiveClarification = (message: ChatMessage) =>
   currentClarification.value?.assistantMessageId === message.id;
@@ -444,11 +643,37 @@ const extractFinalText = (payload: any) => {
   return finalItems
     .filter(
       (item: any) =>
-        item?.type === "markdown" || item?.type === "text" || !item?.type,
+        item?.type === "markdown" ||
+        item?.type === "text" ||
+        item?.type === "list" ||
+        !item?.type,
     )
-    .map((item: any) => (typeof item?.data === "string" ? item.data : ""))
+    .map((item: any) => {
+      if (typeof item?.data === "string") return item.data;
+      if (item?.type === "list" && Array.isArray(item.data)) {
+        return item.data.map((value: unknown) => `- ${String(value)}`).join("\n");
+      }
+      return "";
+    })
     .filter(Boolean)
     .join("\n\n");
+};
+
+const redirectToUavFlyControl = (payload: any) => {
+  const deviceData =
+    payload?.content?.[0]?.metadata?.facts?.skillResults?.[0]?.data;
+  const deviceSn =
+    deviceData?.success === true && deviceData?.deviceSn
+      ? String(deviceData.deviceSn).trim()
+      : "";
+
+  if (!deviceSn) return;
+
+  // 特殊处理：飞控技能成功返回设备编号时，使用当前站点路由跳转到飞控页面，保留当前访问的 IP 或域名。
+  router.push({
+    path: "/flyControl",
+    query: { deviceSn },
+  });
 };
 
 const enqueueTyping = (task: () => Promise<unknown>) => {
@@ -545,9 +770,11 @@ const sendMessage = async ({
   const text = (displayText ?? inputValue.value).trim();
   if (!text || loading.value || stopping.value) return;
 
+  // 普通输入直接作为文本；按钮交互传入的 request 已在子组件中序列化。
   let requestText = request ?? text;
   const clarification = currentClarification.value;
   if (!request && clarification?.type === "plan_review") {
+    // 计划修改仍使用 plan_review 的 revise 协议，低空确认修改则走普通补参。
     requestText = JSON.stringify({
       type: "plan_review",
       action: "revise",
@@ -586,7 +813,6 @@ const sendMessage = async ({
   try {
     const response = await openAiChatStream(
       {
-        user_id: AI_USER_ID,
         request: requestText,
         session_id: sessionId.value,
         agent_type: agentType.value ?? undefined,
@@ -624,17 +850,38 @@ const sendMessage = async ({
       }
 
       if (event.event === "final") {
+        redirectToUavFlyControl(event.data);
         const finalText = extractFinalText(event.data);
         if (event.data?.sessionId) sessionId.value = event.data.sessionId;
-        const awaitingClarification = event.data?.awaitingClarification === true;
-        const nextClarification: Clarification | null = awaitingClarification
+        // 某些后端版本只设置 status=need_clarification，因此两种状态都要识别。
+        const shouldAwaitClarification =
+          event.data?.awaitingClarification === true ||
+          event.data?.status === "need_clarification";
+        // 只有当前轮仍在等待用户输入时才挂载交互卡片，避免把普通 final 误当成可操作状态。
+        const nextClarification: ChatbotClarificationData | null =
+          shouldAwaitClarification && event.data?.clarification
           ? {
               ...(event.data?.clarification || {}),
               assistantMessageId: assistantMessage.id,
             }
           : null;
+        const awaitingClarification = Boolean(nextClarification);
+
+        // final 只代表后端结果已经准备好，不代表前端已完成思考过程的展示。
+        // 这里先保存会话元数据，阶段仍保持 thinking，避免正文抢在思考动画前出现。
+        updateAssistantMessage(assistantMessage.id, () => ({
+          sessionId: sessionId.value,
+          messageId: event.data?.messageId || null,
+        }));
 
         enqueueTyping(async () => {
+          // enqueueTyping 会等待此前已经收到的 thinking/progress 消息逐条展示完成。
+          // 思考区在正文开始前收起，避免最终正文和仍在展开的思考内容同时出现。
+          updateAssistantMessage(assistantMessage.id, () => ({
+            phase: finalText ? "answering" : awaitingClarification ? "awaiting_input" : "finished",
+            thoughtExpanded: false,
+          }));
+
           if (finalText) {
             await typeFinalAnswer(
               assistantMessage.id,
@@ -643,6 +890,8 @@ const sendMessage = async ({
               awaitingClarification ? "awaiting_input" : "finished",
             );
           }
+
+          // 最终正文展示完成后，才激活确认卡片，防止用户在思考过程尚未结束时操作。
           currentClarification.value = nextClarification;
           updateAssistantMessage(assistantMessage.id, () => ({
             sessionId: sessionId.value,
@@ -698,19 +947,20 @@ const sendMessage = async ({
   }
 };
 
-const submitPlanReview = (message: ChatMessage, action: "approve" | "revise") => {
-  const clarification = message.clarification;
-  if (!clarification || !isActiveClarification(message)) return;
+const sendBuiltInQuestion = (question: string) => {
+  if (loading.value || stopping.value) return;
+  void sendMessage({ displayText: question });
+};
 
+const submitClarification = (
+  message: ChatMessage,
+  submission: ClarificationSubmission,
+) => {
+  if (!message.clarification || !isActiveClarification(message)) return;
+  // 子组件同时提供“聊天里显示的中文”和“发给后端的 request”，两者不能混用。
   sendMessage({
-    displayText: action === "approve" ? "确认执行" : inputValue.value,
-    request: JSON.stringify({
-      type: "plan_review",
-      action,
-      taskRunId: clarification.taskRunId,
-      taskTypeId: clarification.taskTypeId,
-      ...(action === "revise" ? { feedback: inputValue.value.trim() } : {}),
-    }),
+    displayText: submission.displayText,
+    request: submission.request,
   });
 };
 
@@ -720,11 +970,14 @@ watch(
     if (isOpen) {
       shouldFollowScroll.value = true;
       scrollToBottom({ force: true });
+    } else {
+      cancelVoiceInput();
     }
   },
 );
 
 onBeforeUnmount(() => {
+  cancelVoiceInput();
   requestController?.abort();
   stopResizeListeners?.();
 });
@@ -895,12 +1148,54 @@ onBeforeUnmount(() => {
 .chatbot-panel__welcome {
   margin-bottom: 20px;
   padding: 13px 14px;
-  border: @border-cyan;
+  // border: @border-cyan;
   border-radius: 6px;
   color: @text-main;
   background: @bg-hl;
   font-size: 13px;
   line-height: 1.7;
+}
+
+.chatbot-panel__built-in {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: -8px 0 20px;
+}
+
+.chatbot-panel__built-in-title {
+  color: @text-sub;
+  font-size: 12px;
+}
+
+.chatbot-panel__built-in-question {
+  //align-self: center;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  border: 1px solid @cyan-soft;
+  border-radius: 5px;
+  color: @text-main;
+  background: rgba(0, 255, 255, 0.04);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+
+  &:hover:not(:disabled) {
+    border-color: @cyan;
+    background: rgba(0, 255, 255, 0.12);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
 }
 
 .chatbot-panel__message {
@@ -1024,73 +1319,13 @@ onBeforeUnmount(() => {
 
 .chatbot-panel__clarification {
   margin-top: 12px;
-  padding: 10px 11px;
-  border: 1px solid @cyan-soft;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.25);
-  font-size: 12px;
 }
 
 .chatbot-panel__clarification-title {
-  margin-bottom: 6px;
-  color: @cyan;
-  font-weight: 600;
-}
-
-.chatbot-panel__clarification-message {
   margin: 0 0 8px;
-  color: @text-main;
-  line-height: 1.55;
-}
-
-.chatbot-panel__plan-list,
-.chatbot-panel__question-list {
-  margin: 8px 0;
-  padding-left: 20px;
-  color: @text-sub;
-  line-height: 1.6;
-}
-
-.chatbot-panel__plan-list li {
-  margin-bottom: 7px;
-
-  strong,
-  span {
-    display: block;
-  }
-
-  strong {
-    color: @text-main;
-  }
-}
-
-.chatbot-panel__clarification-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 9px;
-  color: @text-sub;
-  font-size: 11px;
-
-  button {
-    padding: 4px 9px;
-    border: 1px solid @cyan;
-    border-radius: 4px;
-    color: @cyan;
-    background: @bg-hl;
-    cursor: pointer;
-    font-size: 12px;
-
-    &:hover:not(:disabled) {
-      background: rgba(0, 255, 255, 0.2);
-    }
-
-    &:disabled {
-      cursor: not-allowed;
-      opacity: 0.45;
-    }
-  }
+  color: @cyan;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .chatbot-panel__markdown {
@@ -1165,10 +1400,14 @@ onBeforeUnmount(() => {
   background: rgba(0, 0, 0, 0.3);
 }
 
+.chatbot-panel__input-wrap {
+  position: relative;
+}
+
 .chatbot-panel__input {
   width: 100%;
   min-height: 72px;
-  padding: 10px 11px;
+  padding: 10px 42px 32px 11px;
   resize: none;
   border: 1px solid @cyan-soft;
   border-radius: 6px;
@@ -1178,6 +1417,7 @@ onBeforeUnmount(() => {
   font: inherit;
   font-size: 13px;
   line-height: 1.55;
+      margin-bottom: -4px;
 
   &::placeholder {
     color: @text-sub;
@@ -1189,63 +1429,25 @@ onBeforeUnmount(() => {
   }
 }
 
-.chatbot-panel__composer-bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.chatbot-panel__agent-tabs {
-  display: flex;
-  gap: 6px;
-}
-
-.chatbot-panel__agent-tab {
-  padding: 4px 10px;
-  border: 1px solid @cyan-soft;
-  border-radius: 4px;
-  color: @text-sub;
-  background: transparent;
-  cursor: pointer;
-  font-size: 12px;
-  white-space: nowrap;
-
-  &:hover {
-    color: @cyan;
-    border-color: @cyan;
-  }
-
-  &.is-active {
-    color: #001016;
-    background: @cyan;
-    border-color: @cyan;
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-  }
-}
-
-.chatbot-panel__send {
+.chatbot-panel__voice {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-width: 78px;
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid @cyan;
-  border-radius: 4px;
+  width: 27px;
+  height: 27px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
   color: @cyan;
-  background: @bg-hl;
+  background: @cyan-soft;
   cursor: pointer;
-  font-size: 12px;
 
   &:hover:not(:disabled) {
-    background: rgba(0, 255, 255, 0.2);
+    border-color: @cyan;
+    background: @bg-hl;
   }
 
   &:disabled {
@@ -1253,15 +1455,34 @@ onBeforeUnmount(() => {
     opacity: 0.45;
   }
 
-  &.is-stop {
-    color: #fff;
-    background: #d9534f;
-    border-color: #d9534f;
+  &.is-send {
+    color: white;
+    font-size: 17px;
+    // border-color: @cyan;
+    // background: @cyan;
 
-    &:hover {
+    &:hover:not(:disabled) {
+      background: @cyan-soft;
+    }
+  }
+
+  &.is-stop,
+  &.is-recording {
+    color: #fff;
+    border-color: #d9534f;
+    background: #d9534f;
+
+    &:hover:not(:disabled) {
       background: #c9302c;
     }
   }
+}
+
+.chatbot-panel__stop-icon {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: currentColor;
 }
 
 .is-loading {
