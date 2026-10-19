@@ -1,5 +1,7 @@
 <template>
-  <div class="top-center-overview">
+  <div
+    class="top-center-overview"
+    :class="{ 'is-chatbot-open': chatbot.visible }">
     <div
       class="overview-box"
       v-for="(item, index) in overviewList"
@@ -17,7 +19,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { useChatbotStore } from "@/stores/chatbot";
 import { $getDeviceOverviewStats } from "@/api/flyControl/situationApi";
+
+const chatbot = useChatbotStore();
 
 interface OverviewItem {
   label: string;
@@ -65,6 +70,11 @@ onMounted(() => {
   gap: 18px;
   z-index: 10;
   pointer-events: auto;
+
+  &.is-chatbot-open {
+    flex-wrap: wrap;
+    width: 354px; // 168px * 2 + 18px gap
+  }
 
   .overview-box {
     width: 168px;

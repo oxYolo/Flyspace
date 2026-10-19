@@ -4,7 +4,7 @@ export const useChatbotStore = defineStore("chatbot", {
   state: () => ({
     visible: false,
     // 面板宽度（vw），与 .content-wrap 的 padding-right 联动
-    panelWidth: 36,
+    panelWidth: 26,
   }),
   actions: {
     open() {
