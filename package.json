@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev:local": "vite --host 127.0.0.1 --mode cb --strictPort",
     "dev:wd": "vite --host --mode wd",
     "dev:cb": "vite --host --mode cb",
     "dev:test": "vite --host --mode test",

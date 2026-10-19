@@ -44,6 +44,14 @@
       </div>
     </header>
 
+    <div v-if="airportFocusState.airports.length || airportFocusState.unlocated.length" class="chatbot-panel__airport-focus">
+      <span v-for="airport in airportFocusState.airports" :key="airport.deviceSn">
+        {{ airport.name }} · {{ airport.onlineStatus === 1 ? '在线' : airport.onlineStatus === 0 ? '离线' : '状态未知' }}
+      </span>
+      <span v-if="airportFocusState.airports.length">已定位到地图（同名机场全部显示）</span>
+      <span v-if="airportFocusState.unlocated.length">部分机场缺少有效坐标，暂无法定位。</span>
+      <button type="button" @click="clearAirportFocus">清除定位</button>
+    </div>
     <section
       ref="messagesRef"
       class="chatbot-panel__messages"
@@ -218,6 +226,7 @@ import {
   transcribeAiSpeech,
 } from "@/api/chatbot";
 import { useChatbotStore } from "@/stores/chatbot";
+import { airportFocusState, clearAirportFocus, cancelAirportResolution, focusConversationAirports } from '@/services/airportFocus';
 import ChatbotClarification from "./ChatbotClarification.vue";
 import type {
   ChatbotClarification as ChatbotClarificationData,
@@ -349,6 +358,7 @@ const cancelVoiceInput = () => {
 };
 
 const newChat = () => {
+  clearAirportFocus();
   cancelVoiceInput();
   requestController?.abort();
   requestController = null;
@@ -592,6 +602,7 @@ const startResize = (event: PointerEvent) => {
 
 const stopMessage = () => {
   if (!loading.value) return;
+  cancelAirportResolution();
 
   messages.value = messages.value.map((message) =>
     message.role === "assistant" && message.isStreaming && message.thoughtExpanded
@@ -663,17 +674,18 @@ const redirectToUavFlyControl = (payload: any) => {
   const deviceData =
     payload?.content?.[0]?.metadata?.facts?.skillResults?.[0]?.data;
   const deviceSn =
-    deviceData?.success === true && deviceData?.deviceSn
-      ? String(deviceData.deviceSn).trim()
+    deviceData?.uiEvent?.type === 'task.live.open' && deviceData?.uiEvent?.payload?.deviceSn
+      ? String(deviceData.uiEvent.payload.deviceSn).trim()
       : "";
 
-  if (!deviceSn) return;
+  if (!deviceSn) return false;
 
   // 特殊处理：飞控技能成功返回设备编号时，使用当前站点路由跳转到飞控页面，保留当前访问的 IP 或域名。
   router.push({
     path: "/flyControl",
     query: { deviceSn },
   });
+  return true;
 };
 
 const enqueueTyping = (task: () => Promise<unknown>) => {
@@ -769,6 +781,7 @@ const sendMessage = async ({
 }: { request?: string; displayText?: string } = {}) => {
   const text = (displayText ?? inputValue.value).trim();
   if (!text || loading.value || stopping.value) return;
+  cancelAirportResolution();
 
   // 普通输入直接作为文本；按钮交互传入的 request 已在子组件中序列化。
   let requestText = request ?? text;
@@ -850,8 +863,12 @@ const sendMessage = async ({
       }
 
       if (event.event === "final") {
-        redirectToUavFlyControl(event.data);
         const finalText = extractFinalText(event.data);
+        if (!redirectToUavFlyControl(event.data)) {
+          void focusConversationAirports(`${text}\n${finalText}`, event.data,
+            () => router.push('/defaultMapPage/flyControl/project'))
+            .catch(error => { if (error?.name !== 'AbortError') ElMessage.warning(error.message); });
+        }
         if (event.data?.sessionId) sessionId.value = event.data.sessionId;
         // 某些后端版本只设置 status=need_clarification，因此两种状态都要识别。
         const shouldAwaitClarification =
@@ -977,6 +994,7 @@ watch(
 );
 
 onBeforeUnmount(() => {
+  cancelAirportResolution();
   cancelVoiceInput();
   requestController?.abort();
   stopResizeListeners?.();
@@ -984,6 +1002,16 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="less" scoped>
+.chatbot-panel__airport-focus {
+  padding: 10px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 12px;
+  color: #bceff0;
+  border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+  button { color: #00e6e6; border: 0; background: transparent; cursor: pointer; }
+}
 @cyan: #00ffff;
 @cyan-soft: rgba(0, 255, 255, 0.3);
 @bg-fill: rgba(0, 10, 20, 0.82);

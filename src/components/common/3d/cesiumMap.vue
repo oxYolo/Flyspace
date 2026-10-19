@@ -60,6 +60,7 @@
 </template>
 
 <script setup lang="ts">
+import { restoreAirportFocus } from '@/services/airportFocus';
 import { ref, onMounted, onUnmounted } from "vue";
 // @ts-ignore
 import { initMapService } from "@/services/mapService";
@@ -163,6 +164,7 @@ onMounted(() => {
   });
 
   emitter.emit("base-map-load", viewer);
+  queueMicrotask(restoreAirportFocus);
   // 可选：更贴地显示
   viewer.scene.globe.depthTestAgainstTerrain = true;
   setupMouseMoveHandler();

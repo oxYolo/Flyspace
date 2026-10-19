@@ -1,7 +1,7 @@
 import { fileURLToPath, URL } from "node:url";
 import path from 'path'
 import { resolve } from 'path'
-import { defineConfig, splitVendorChunkPlugin } from "vite";
+import { defineConfig, loadEnv, splitVendorChunkPlugin } from "vite";
 import inject from '@rollup/plugin-inject'
 import vue from "@vitejs/plugin-vue";
 import vueJsx from "@vitejs/plugin-vue-jsx";
@@ -50,12 +50,14 @@ const bufferPolyfillPlugin = () => ({
   }
 });
 
-export default defineConfig(({ command, mode }) => ({
+export default defineConfig(({ command, mode }) => {
+ const localEnv = loadEnv(mode, process.cwd(), '');
+ return ({
   esbuild: command === 'build' ? { drop: ['console', 'debugger'] } : undefined,
   // remove buffer-related optimizeDeps/defines
   server: {
     port: 9000,
-    open: true,
+    open: localEnv.LOCAL_DEV !== 'true',
     fs: {
       // 允许访问的目录（主项目 + 公共组件库）
       allow: [
@@ -75,7 +77,7 @@ export default defineConfig(({ command, mode }) => ({
         secure: false,
       },
       "/ai": { // 智能体对话（SSE 流式），避免浏览器跨域
-        target: 'http://223.75.173.128:48000',
+        target: localEnv.AGENT_PROXY_TARGET || 'http://223.75.173.128:48000',
         changeOrigin: true,
         secure: false,
       },
@@ -173,4 +175,5 @@ export default defineConfig(({ command, mode }) => ({
       },
     },
   },
-}));
+});
+});

@@ -1,6 +1,6 @@
 import { getToken } from "@/utils/auth";
 
-// 智能体后端网关地址（走 Vite 代理 /gn-agent，避免跨域；后续切换接口时改这里 + vite.config.ts 代理 target）
+// 智能体后端网关通过 Vite /ai 代理，本地目标见 AGENT_PROXY_TARGET。
 const AI_API_BASE = "/ai/v1".replace(/\/+$/, "");
 export const AI_USER_ID = 2;
 
@@ -37,7 +37,7 @@ const parseResponseBody = async (response: Response) => {
   }
 };
 
-// 复用系统登录 token（与 src/utils/request.ts 拦截器一致的 Bearer 头）
+// 复用低空智飞平台原有登录令牌，无需再次登录智能体。
 const getAuthHeaders = (): Record<string, string> => {
   const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -64,7 +64,7 @@ export const openAiChatStream = async (
   if (!response.ok) {
     const data = await parseResponseBody(response);
     const detail =
-      typeof data === "string" ? data : data?.message || data?.msg;
+      typeof data === "string" ? data : data?.message || data?.msg || data?.detail;
     throw new Error(detail || `AI 对话请求失败（${response.status}）`);
   }
   if (!response.body) {
