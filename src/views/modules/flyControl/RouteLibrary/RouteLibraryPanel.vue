@@ -53,7 +53,7 @@
         <!-- 通过 v-for 渲染航线卡片 -->
         <div v-for="route in routes" :key="route.routeId" class="route-card"
           :class="{ active: selectedRouteId === route.routeId }" @click.stop="selectRoute(route.routeId)">
-          <el-checkbox v-model="selectedRouteIds" :value="route.id" class="route-select-checkbox"
+          <el-checkbox v-model="selectedRouteIds" :value="route.routeId" class="route-select-checkbox"
             :disabled="route.locked" @click.stop />
           <div v-tooltip="route.title" class="card-title">
             {{ route.title }}
@@ -265,7 +265,7 @@ const searchForm = ref<{ routeName: string }>({ routeName: "" });
 
 // 示例航线数据数组
 const routes = ref<any[]>([]);
-const selectedRouteIds = ref<Array<string | number>>([]);
+const selectedRouteIds = ref<Array<string>>([]);
 
 // 触发搜索（远端接口筛选）
 const handleSearch = () => {
@@ -1839,7 +1839,7 @@ async function getAllflight(flag: boolean, routeName?: string) {
   try {
     const { data, lineData } = await GetAllFlight(flag, pageOptions, routeName);
     routes.value = data;
-    const routeIds = new Set(data.map((route: any) => route.id));
+    const routeIds = new Set(data.map((route: any) => route.routeId));
     selectedRouteIds.value = selectedRouteIds.value.filter((id) => routeIds.has(id));
     if (flag) {
       const targetRoute = data.find(
@@ -1892,8 +1892,15 @@ const handleBatchDelete = async () => {
     if (res?.code !== 200) {
       throw new Error(res?.msg || "批量删除航线失败");
     }
+    // 接口约定：code=200 不代表有数据被删除，需以 data 字段为准。
+    if (res?.data === false) {
+      selectedRouteIds.value = [];
+      ElMessage.warning("所选航线不存在或已被删除");
+      await getAllflight(false, searchForm.value.routeName);
+      return;
+    }
     const selectedIds = new Set(selectedRouteIds.value);
-    if (currentSelectedRoute.value?.id && selectedIds.has(currentSelectedRoute.value.id)) {
+    if (currentSelectedRoute.value?.routeId && selectedIds.has(currentSelectedRoute.value.routeId)) {
       clearRouteLayersWithGrids();
       selectedRouteId.value = null;
       currentSelectedRoute.value = {};

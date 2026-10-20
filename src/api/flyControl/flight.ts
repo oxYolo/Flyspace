@@ -37,16 +37,17 @@ export function $removeflight(ids: any) {
 }
 
 /**
- * 批量删除航线（接口占位）
- * TODO: 后端批量删除接口确定后，替换下面的请求地址和请求参数。
- * @param ids 航线ID列表
+ * 批量删除航线
+ * POST /drone/route/batchRemove，Body 为业务 routeId 字符串数组。
+ * 注意：code=200 不代表有数据被删除，需以响应 data 字段为准。
+ * @param routeIds 业务航线ID（drone_flight_route.route_id）列表
  * @returns
  */
-export function $batchRemoveflight(ids: Array<string | number>) {
+export function $batchRemoveflight(routeIds: Array<string>) {
   return request({
-    url: `${urlConfig.baseUrl}/drone/drone/route/batch-delete`,
-    method: "delete",
-    data: { ids },
+    url: `${urlConfig.baseUrl}/drone/drone/route/batchRemove`,
+    method: "post",
+    data: routeIds,
   });
 }
 
