@@ -53,7 +53,6 @@ const handleConfirm = () => {
   if (routeNameInternal.value.trim() !== '') {
     emit('confirm', { id: props.routeId, newName: routeNameInternal.value.trim() });
   }
-  emit('update:visible', false);
 };
 
 const handleCancel = () => {

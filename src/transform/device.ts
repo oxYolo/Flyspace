@@ -31,7 +31,12 @@ export const deviceFlightItem = (element: any) => {
   if (!element) return;
   element.type = element.domain == 3 ? 'dock' : 'drone';
   element.time = element.lastOnlineTime;
-  element.status = element.onlineStatus == 1 ? 'success' : 'warning';
+  // 离线 / 在线（空闲） / 在线（执行中）
+  if (element.onlineStatus == 1) {
+    element.status = element.workStatus == 1 ? 'processing' : 'success';
+  } else {
+    element.status = 'warning';
+  }
   return element;
 }
 // 机场详情字段映射

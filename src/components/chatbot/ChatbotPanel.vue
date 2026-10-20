@@ -28,9 +28,17 @@
         <button
           class="chatbot-panel__icon-btn"
           type="button"
-          title="新建聊天"
-          aria-label="新建聊天"
-          @click="newChat">
+          title="历史对话"
+          aria-label="历史对话"
+          @click="openHistory">
+          <el-icon><ChatDotRound /></el-icon>
+        </button>
+        <button
+          class="chatbot-panel__icon-btn"
+          type="button"
+          title="新建对话"
+          aria-label="新建对话"
+          @click="handleNewChat">
           <el-icon><Plus /></el-icon>
         </button>
         <button
@@ -46,6 +54,7 @@
 
     <section
       ref="messagesRef"
+      v-show="panelView === 'chat'"
       class="chatbot-panel__messages"
       @scroll.passive="handleMessagesScroll">
       <div class="chatbot-panel__welcome">您好，我是低空智飞助手，召唤即现，掌控全域！支持低空政策答疑、一键飞行，可接收各类飞行任务指令。即刻开启，体验从数据分析到任务执行的无缝协同。</div>
@@ -165,7 +174,7 @@
       </div>
     </section>
 
-    <footer class="chatbot-panel__composer">
+    <footer v-show="panelView === 'chat'" class="chatbot-panel__composer">
       <div class="chatbot-panel__input-wrap">
         <textarea
           v-model="inputValue"
@@ -194,6 +203,13 @@
         </button>
       </div>
     </footer>
+
+    <ChatbotHistoryList
+      v-show="panelView === 'history'"
+      :active="panelView === 'history'"
+      @back="panelView = 'chat'"
+      @select="openHistorySession"
+      @deleted="handleHistoryDeleted" />
   </aside>
 </template>
 
@@ -203,6 +219,7 @@ import { useRouter } from "vue-router";
 import {
   ArrowDown,
   ArrowRight,
+  ChatDotRound,
   Close,
   Loading,
   Microphone,
@@ -212,13 +229,16 @@ import { ElMessage } from "element-plus";
 import { marked } from "marked";
 import chatbotAvatar from "@/assets/icons/chatbot.gif";
 import {
+  getChatSessionDetail,
   openAiChatStream,
   readSseEvents,
   stopAiAgent,
   transcribeAiSpeech,
 } from "@/api/chatbot";
+import type { ChatHistoryMessage } from "@/api/chatbot";
 import { useChatbotStore } from "@/stores/chatbot";
 import ChatbotClarification from "./ChatbotClarification.vue";
+import ChatbotHistoryList from "./ChatbotHistoryList.vue";
 import type {
   ChatbotClarification as ChatbotClarificationData,
   ClarificationSubmission,
@@ -276,6 +296,8 @@ const shouldFollowScroll = ref(true);
 const sessionId = ref<string | null>(null);
 const currentClarification = ref<ChatbotClarificationData | null>(null);
 const resizing = ref(false);
+// 面板视图：chat 聊天窗口 / history 历史任务列表
+const panelView = ref<"chat" | "history">("chat");
 let requestController: AbortController | null = null;
 let messageId = 0;
 let typingQueue: Promise<unknown> = Promise.resolve();
@@ -350,6 +372,12 @@ const cancelVoiceInput = () => {
 
 const newChat = () => {
   cancelVoiceInput();
+  // 清空前先取出运行中的消息 id，stop 接口需要它
+  const streamingMessage = messages.value.find(
+    (message) => message.role === "assistant" && message.isStreaming,
+  );
+  const wasRunning = loading.value;
+
   requestController?.abort();
   requestController = null;
   loading.value = false;
@@ -360,6 +388,117 @@ const newChat = () => {
   typingQueue = Promise.resolve();
   typingError = null;
   shouldFollowScroll.value = true;
+
+  // 前端 abort 只是断开 SSE，后端任务仍在跑，需要显式通知停止
+  if (wasRunning) {
+    void stopAiAgent(streamingMessage?.messageId || null).catch((error) => {
+      console.warn("AI 停止请求失败", error);
+    });
+  }
+};
+
+const mapHistoryPhase = (
+  status?: string,
+  awaitingClarification?: boolean,
+): ChatMessage["phase"] => {
+  if (status === "error") return "error";
+  if (status === "cancelled") return "cancelled";
+  if (awaitingClarification || status === "need_clarification")
+    return "awaiting_input";
+  return "finished";
+};
+
+// 把历史消息按 ChatMessage 结构还原到聊天窗口，不做打字动画直接落位。
+const restoreHistoryMessages = (
+  historyMessages: ChatHistoryMessage[],
+  restoredSessionId: string,
+) => {
+  const restored: ChatMessage[] = [];
+  let lastClarification: ChatbotClarificationData | null = null;
+
+  historyMessages.forEach((item) => {
+    if (item?.query) {
+      restored.push({ id: ++messageId, role: "user", content: item.query });
+    }
+
+    const assistantId = ++messageId;
+    const awaitingClarification =
+      item?.awaitingClarification === true ||
+      item?.status === "need_clarification";
+    const clarification: ChatbotClarificationData | null =
+      awaitingClarification && item?.clarification
+        ? {
+            ...(item.clarification as ChatbotClarificationData),
+            assistantMessageId: assistantId,
+          }
+        : null;
+    const thoughtSteps = (
+      item?.progressMessages?.length
+        ? item.progressMessages
+        : (item?.trace || []).map((step) => step?.name || "")
+    ).filter(Boolean);
+
+    restored.push({
+      id: assistantId,
+      role: "assistant",
+      content: extractFinalText({ content: item?.content }),
+      phase: mapHistoryPhase(item?.status, awaitingClarification),
+      thoughtSteps,
+      thoughtExpanded: false,
+      isStreaming: false,
+      sessionId: restoredSessionId,
+      messageId: item?.messageId || null,
+      clarification,
+      awaitingClarification,
+      isError: item?.status === "error",
+    });
+
+    if (clarification) lastClarification = clarification;
+  });
+
+  messages.value = restored;
+  sessionId.value = restoredSessionId;
+  currentClarification.value = lastClarification;
+  shouldFollowScroll.value = true;
+};
+
+const openHistory = () => {
+  cancelVoiceInput();
+  panelView.value = "history";
+};
+
+// 新建聊天：清空当前会话并切回聊天视图（历史页点它也要回到聊天窗口）
+const handleNewChat = () => {
+  newChat();
+  panelView.value = "chat";
+};
+
+const openHistorySession = async (restoredSessionId: string) => {
+  // newChat 内部会中止流式请求、关闭录音并清空会话状态
+  newChat();
+  stopping.value = false;
+
+  try {
+    const res = await getChatSessionDetail(restoredSessionId);
+    restoreHistoryMessages(res?.messages || [], restoredSessionId);
+  } catch (error) {
+    const err = error as Error & { status?: number };
+    ElMessage.error(
+      err?.status === 401
+        ? "登录状态无效，请重新登录后再试"
+        : err?.message || "获取历史会话失败，请重试",
+    );
+    return;
+  }
+
+  // 先切回聊天视图，消息区脱离 display:none 后才能正确滚动到底部
+  panelView.value = "chat";
+  void scrollToBottom({ force: true });
+};
+
+const handleHistoryDeleted = (deletedSessionId: string) => {
+  // 被删除的正好是当前打开的会话时，重置聊天，返回后即原始页面。
+  if (sessionId.value === deletedSessionId) newChat();
 };
 
 const transcribeRecording = async (audio: Blob) => {
@@ -1064,12 +1203,16 @@ onBeforeUnmount(() => {
   border: 1px solid @cyan;
   border-radius: 50%;
   background: @bg-hl;
+      background: radial-gradient(circle at 50% 32%, #3CC3DA 0%, #1B7F9E 42%, #0C4A63 100%);
+    border: 2px solid #5FE0EC;
+    box-shadow: 0 0 0 3px rgba(95, 224, 236, .12);
 
   img {
     display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
+    padding: 2px;
   }
 }
 
@@ -1110,7 +1253,7 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
+  width: 30px;
   height: 34px;
   border: 0;
   border-radius: 4px;
@@ -1335,9 +1478,9 @@ onBeforeUnmount(() => {
   :deep(p) {
     margin: 12px 0;
   }
-  :deep(p:last-child) {
-    margin-bottom: 0;
-  }
+  // :deep(p:last-child) {
+  //   margin-bottom: 0;
+  // }
   :deep(h2),
   :deep(h3) {
     margin: 16px 0 8px;

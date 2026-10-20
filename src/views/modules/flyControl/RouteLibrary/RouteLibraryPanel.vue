@@ -1791,26 +1791,27 @@ function handleClearAllPath() {
 
 // 处理创建航线对话框的确认事件
 const handleCreateRouteConfirm = (routeData: any) => {
-  // 在这里添加处理创建航线成功后的逻辑，例如刷新列表等
-  // 创建新航线后，通常会打开设置面板，并设置新航线的类型
-  currentRoute.value = routeData;
-  currentRouteType.value = routeData.templateType; // 假设新创建的是航点航线 // 修改点：创建航线后更新 currentRouteType
-  showRouteSettingsPanel.value = true;
-  if (routeData.templateType == 0) {
-    //航点航线
-    // emitter.emit("draw_line_string");
-    routeType.value = "0";
-  } else if (routeData.templateType == 1) {
-    //面状航线
-    routeType.value = "1";
-  }
-  $addflight(routeData).then((res: any) => {
-    if (res.code == 200) {
-      ElMessage({ message: `创建成功`, type: "success" });
-      handleClearAllPath();
-      getAllflight(true);
-    }
-  });
+  $addflight(routeData)
+    .then((res: any) => {
+      if (res.code == 200) {
+        // 创建成功后再做 UI 跳转
+        currentRoute.value = routeData;
+        currentRouteType.value = routeData.templateType;
+        showCreateRouteDialog.value = false;
+        showRouteSettingsPanel.value = true;
+        if (routeData.templateType == 0) {
+          routeType.value = "0";
+        } else if (routeData.templateType == 1) {
+          routeType.value = "1";
+        }
+        ElMessage({ message: `创建成功`, type: "success" });
+        handleClearAllPath();
+        getAllflight(true);
+      }
+    })
+    .catch((err: any) => {
+      ElMessage({ message: err?.message || "创建航线失败", type: "error" });
+    });
 };
 
 const handleSettingConfirm = (routeData: any) => {
@@ -1960,20 +1961,25 @@ const handleRenameConfirm = ({
   if (id !== null && newName.trim() !== "") {
     const index = routes.value.findIndex((route) => route.id === id);
     if (index !== -1) {
+      const originalName = routes.value[index].routeName;
+      // 乐观更新：先改列表展示名
       routes.value[index].routeName = newName.trim();
-      // 可以在这里添加保存到后端或本地存储的逻辑
-      $editflight(routes.value[index]).then((res: any) => {
-        if (res.code == 200) {
-          ElMessage({ message: `重命名成功`, type: "success" });
-          handleClearAllPath();
-          getAllflight(false);
-        }
-      });
+      $editflight(routes.value[index])
+        .then((res: any) => {
+          if (res.code == 200) {
+            ElMessage({ message: `重命名成功`, type: "success" });
+            showRenameDialog.value = false;
+            handleClearAllPath();
+            getAllflight(false);
+          }
+        })
+        .catch((err: any) => {
+          // 失败回滚
+          routes.value[index].routeName = originalName;
+          ElMessage({ message: err?.message || "重命名航线失败", type: "error" });
+        });
     }
   }
-  // 重置状态
-  renamingRouteId.value = null;
-  renamingRouteName.value = "";
 };
 
 // 处理重命名对话框的取消事件 (由 RenameRouteDialog 触发)

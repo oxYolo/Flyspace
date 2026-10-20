@@ -47,6 +47,12 @@ export interface LowAltitudeContext {
   // true 表示本次确认后会继续下发，不能等同于已经执行成功。
   willPublish?: boolean;
   weather?: LowAltitudeWeather;
+  // 设备实时位置，用于定位飞控页面。
+  device?: {
+    longitude?: number;
+    latitude?: number;
+    altitude?: number;
+  };
 }
 
 export interface ChatbotClarification {

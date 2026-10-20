@@ -22,7 +22,7 @@ const recentActivities = ref<DeviceInfo[]>([]);
 // 搜索和筛选
 const searchQuery = ref("");
 const selectedSource = ref("");
-const selectedStatus = ref(1);
+const selectedStatus = ref("online");
 
 // 来源列表
 const sourceOptions = [
@@ -34,13 +34,24 @@ const sourceOptions = [
 // 状态列表
 const statusOptions = [
   { label: "全部", value: "" },
-  { label: "在线", value: 1 },
-  { label: "离线", value: 0 },
+  { label: "在线", value: "online" },
+  { label: "执行中", value: "executing" },
+  { label: "离线", value: "offline" },
 ];
 
 // 获取状态样式
 const getStatusClass = (status: string | undefined) => {
   return `status-${status ?? ""}`;
+};
+
+// 状态标签文案
+const getStatusText = (status: string | undefined) => {
+  const map: Record<string, string> = {
+    success: "在线",
+    processing: "执行中",
+    warning: "离线",
+  };
+  return map[status ?? ""] ?? "离线";
 };
 
 // 设备详情对话框
@@ -112,13 +123,21 @@ const getRunTaskData = async () => {
 };
 
 function getflightList() {
-  const params = {
+  const params: any = {
     nickname: searchQuery.value,
     domain: selectedSource.value,
-    onlineStatus: selectedStatus.value,
     pageNum: 1,
     pageSize: 50,
   };
+  // 状态筛选：在线为宽口径（onlineStatus=1，含执行中设备）
+  if (selectedStatus.value === "online") {
+    params.onlineStatus = 1;
+  } else if (selectedStatus.value === "executing") {
+    params.onlineStatus = 1;
+    params.workStatus = 1;
+  } else if (selectedStatus.value === "offline") {
+    params.onlineStatus = 0;
+  }
   $getflightList(params).then((res: any) => {
     if ((res as any)?.code == 200) {
       recentActivities.value = (res as any).rows.map((element: any) =>
@@ -212,7 +231,7 @@ onMounted(async () => {
             <div class="activity-time">{{ activity.deviceName }}</div>
           </div>
           <div class="activity-status" :class="getStatusClass(activity.status)">
-            {{ activity.status === "success" ? "在线" : "离线" }}
+            {{ getStatusText(activity.status) }}
           </div>
         </div>
       </div>
@@ -362,8 +381,8 @@ onMounted(async () => {
           }
 
           &.status-processing {
-            background-color: #409eff;
-            box-shadow: 0 0 0 rgba(64, 158, 255, 0.4);
+            background-color: #e6a23c;
+            box-shadow: 0 0 0 rgba(230, 162, 60, 0.4);
             animation: pulse 1.5s infinite;
           }
 
@@ -394,13 +413,13 @@ onMounted(async () => {
 
 @keyframes pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(64, 158, 255, 0.4);
+    box-shadow: 0 0 0 0 rgba(230, 162, 60, 0.4);
   }
   70% {
-    box-shadow: 0 0 0 6px rgba(64, 158, 255, 0);
+    box-shadow: 0 0 0 6px rgba(230, 162, 60, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(64, 158, 255, 0);
+    box-shadow: 0 0 0 0 rgba(230, 162, 60, 0);
   }
 }
 </style>

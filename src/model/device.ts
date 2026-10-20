@@ -4,6 +4,8 @@ export interface DeviceInfo {
   deviceName?: string;
   type?: string;
   status?: string;
+  onlineStatus?: number;
+  workStatus?: number;
   deviceSn?: string;
   subDeviceSn?: string,
   workspaceId?: string;

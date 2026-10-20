@@ -47,7 +47,7 @@
         </div>
         <div class="header-icons">
           <!-- 智能体 -->
-          <el-tooltip content="智能体">
+          <el-tooltip content="低空智飞助手">
             <div class="chatbot-entry" @click="chatbotStore.toggle()">
               <img :src="chatbotGif" />
             </div>

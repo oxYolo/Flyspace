@@ -133,6 +133,123 @@ export const stopAiAgent = async (messageId: string | number | null = null) => {
   return parseResponseBody(response);
 };
 
+// ---------------- 历史会话 ----------------
+
+export interface ChatSessionItem {
+  session_id: string;
+  session_name: string;
+  is_pinned: boolean;
+}
+
+export interface ChatSessionListResult {
+  total: number;
+  sessions: ChatSessionItem[];
+}
+
+export interface ChatHistoryContentItem {
+  type?: string;
+  data?: unknown;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ChatHistoryMessage {
+  messageId?: string;
+  query?: string;
+  files?: unknown[];
+  content?: ChatHistoryContentItem[];
+  trace?: Array<{ name?: string; status?: string }>;
+  progressMessages?: string[];
+  usedTools?: string[];
+  status?: string;
+  clarification?: Record<string, unknown> | null;
+  runState?: Record<string, unknown> | null;
+  awaitingClarification?: boolean;
+}
+
+export interface ChatHistoryDetail {
+  messages: ChatHistoryMessage[];
+}
+
+const requestAiJson = async <T,>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> => {
+  const response = await fetch(`${AI_API_BASE}${path}`, {
+    ...init,
+    headers: {
+      Accept: "application/json",
+      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      ...getAuthHeaders(),
+      ...(init?.headers || {}),
+    },
+  });
+
+  if (!response.ok) {
+    const data = await parseResponseBody(response);
+    const detail =
+      typeof data === "string"
+        ? data
+        : data?.message || data?.msg || data?.detail;
+    const error = new Error(
+      detail || `请求失败（${response.status}）`,
+    ) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
+  }
+
+  return (await parseResponseBody(response)) as T;
+};
+
+export const getChatSessions = ({
+  keyword = "",
+  pageNum = 1,
+  pageSize = 20,
+}: {
+  keyword?: string;
+  pageNum?: number;
+  pageSize?: number;
+} = {}): Promise<ChatSessionListResult> => {
+  const search = new URLSearchParams({
+    page_num: String(pageNum),
+    page_size: String(pageSize),
+  });
+  const trimmed = keyword.trim();
+  if (trimmed) search.set("keyword", trimmed);
+  return requestAiJson<ChatSessionListResult>(
+    `/history/get_sessions?${search.toString()}`,
+  );
+};
+
+export const getChatSessionDetail = (
+  sessionId: string,
+): Promise<ChatHistoryDetail> =>
+  requestAiJson<ChatHistoryDetail>(
+    `/history/get_session?session_id=${encodeURIComponent(sessionId)}`,
+  );
+
+export const pinChatSession = (
+  sessionId: string,
+  isPinned: boolean,
+): Promise<boolean> =>
+  requestAiJson<boolean>("/history/pin_session", {
+    method: "POST",
+    body: JSON.stringify({ session_id: sessionId, is_pinned: isPinned }),
+  });
+
+export const renameChatSession = (
+  sessionId: string,
+  newName: string,
+): Promise<boolean> =>
+  requestAiJson<boolean>("/history/rename_session", {
+    method: "POST",
+    body: JSON.stringify({ session_id: sessionId, new_name: newName }),
+  });
+
+export const deleteChatSession = (sessionId: string): Promise<boolean> =>
+  requestAiJson<boolean>(
+    `/history/delete_session?session_id=${encodeURIComponent(sessionId)}`,
+  );
+
 const parseSseFrame = (frame: string): SseEvent | null => {
   let event = "message";
   const dataLines: string[] = [];

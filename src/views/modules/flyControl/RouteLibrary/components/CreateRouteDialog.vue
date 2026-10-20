@@ -298,11 +298,8 @@ const handleConfirm = async () => {
   }
   console.log("创建航线数据:", newRouteData);
 
-  // 触发 confirm 事件，并传递收集到的数据
+  // 触发 confirm 事件，并传递收集到的数据；由父组件决定是否关闭对话框。
   emit("confirm", newRouteData);
-
-  // 关闭对话框
-  handleClose();
 };
 </script>
 

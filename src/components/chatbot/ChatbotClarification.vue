@@ -132,6 +132,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { WarningFilled } from "@element-plus/icons-vue";
+import { getViewer } from "@/services/mapService";
 import type {
   ChatbotClarification,
   ClarificationCandidate,
@@ -379,10 +380,46 @@ const submitSkills = () => {
   });
 };
 
+// 记录上次 flyTo 的指纹，避免同一个确认卡反复触发飞行动画。
+let lastFlyToFingerprint: string | null = null;
+
 watch(
   () => props.clarification,
   (clarification) => {
     selectedSkillNames.value = [...(clarification.defaultSelectedSkillNames || [])];
+
+    // 低空确认卡片：若携带设备实时经纬度则自动飞到该位置。
+    if (clarification.type !== "low_altitude_confirmation") return;
+    const lowAltitude = clarification.lowAltitude;
+    if (!lowAltitude) return;
+
+    const fingerprint = lowAltitude.fingerprint ?? null;
+    if (fingerprint && fingerprint === lastFlyToFingerprint) return;
+
+    const device = lowAltitude.device;
+    const lon = device?.longitude;
+    const lat = device?.latitude;
+    if (!Number.isFinite(lon) || !Number.isFinite(lat)) return;
+
+    const viewer = getViewer();
+    const Cesium = (window as any).Cesium;
+    if (!viewer || !Cesium) return;
+
+    try {
+      const position = Cesium.Cartesian3.fromDegrees(lon, lat, device?.altitude ?? 0);
+      const boundingSphere = new Cesium.BoundingSphere(position, 1);
+      viewer.camera.flyToBoundingSphere(boundingSphere, {
+        duration: 1.5,
+        offset: new Cesium.HeadingPitchRange(
+          0,
+          Cesium.Math.toRadians(-45),
+          device?.altitude ? device.altitude * 1.5 : 5000,
+        ),
+      });
+      lastFlyToFingerprint = fingerprint;
+    } catch (err) {
+      console.warn("flyTo device failed:", err);
+    }
   },
   { immediate: true },
 );
@@ -523,8 +560,8 @@ watch(
 
 .chatbot-clarification__plan-list,
 .chatbot-clarification__question-list {
-  margin: 8px 0;
-  padding-left: 20px;
+  // margin: 8px 0;
+  // padding-left: 20px;
   color: @text-sub;
   line-height: 1.6;
 }
