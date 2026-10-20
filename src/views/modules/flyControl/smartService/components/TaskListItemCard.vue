@@ -59,7 +59,7 @@ interface TaskListItem {
   id: string;
   name: string;
   createdAt: string;
-  status: "INIT" | "SUBMITTING" | "SUBMITTED" | "SUCCESS" | "FAILED";
+  viewStatus: "PROCESSING" | "SUCCESS" | "FAILED";
   videoName?: string;
   videoUrl?: string;
   raw?: any;
@@ -76,19 +76,15 @@ const emits = defineEmits<{
 }>();
 
 const statusText = computed(() => {
-  const s = props.task.status;
-  if (s === "INIT") return "待提交";
-  if (s === "SUBMITTING") return "提交中";
-  if (s === "SUBMITTED") return "已提交";
+  const s = props.task.viewStatus;
+  if (s === "PROCESSING") return "识别中";
   if (s === "SUCCESS") return "识别成功";
   return "识别失败";
 });
 
 const statusTagType = computed(() => {
-  const s = props.task.status;
-  if (s === "INIT") return "info";
-  if (s === "SUBMITTING") return "warning";
-  if (s === "SUBMITTED") return "primary";
+  const s = props.task.viewStatus;
+  if (s === "PROCESSING") return "warning";
   if (s === "SUCCESS") return "success";
   return "danger";
 });

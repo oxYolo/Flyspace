@@ -30,7 +30,8 @@
           :sceneCode="activeScene"
           v-model:current-page="pageState.currentPage"
           v-model:page-size="pageState.pageSize"
-          @locate="handleLocateIssue" />
+          @locate="handleLocateIssue"
+          @resubmitted="handleTaskResubmitted" />
       </div>
     </div>
 
@@ -61,7 +62,7 @@ interface InspectionTask {
   id: string;
   name: string;
   createdAt: string;
-  status: "INIT" | "SUBMITTING" | "SUBMITTED" | "SUCCESS" | "FAILED";
+  viewStatus: "PROCESSING" | "SUCCESS" | "FAILED";
   videoName?: string;
   raw?: any;
 }
@@ -189,7 +190,7 @@ function handleCreateTask(payload: {
         id: payload.taskId,
         name: payload.name,
         createdAt: "",
-        status: "SUBMITTED",
+        viewStatus: "PROCESSING",
         videoName: payload.videoName,
         raw: {
           taskId: payload.taskId,
@@ -199,6 +200,11 @@ function handleCreateTask(payload: {
       }
     : null;
   pageState.value.currentPage = 1;
+  taskListRefreshKey.value += 1;
+}
+
+/** 再次识别提交成功后刷新任务列表（列表重建时会优先选回当前任务） */
+function handleTaskResubmitted() {
   taskListRefreshKey.value += 1;
 }
 

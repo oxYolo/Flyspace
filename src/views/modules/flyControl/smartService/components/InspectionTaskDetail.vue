@@ -75,7 +75,19 @@
             @reviewed="handleReviewed"
             @locate="handleLocate" />
         </div>
-        <div v-else-if="!loading" class="emptyWrap">
+        <div v-else-if="task.viewStatus === 'PROCESSING'" class="emptyWrap">
+          <el-empty :image-size="160" description="识别中，请稍候..." />
+        </div>
+        <div v-else-if="task.viewStatus === 'FAILED'" class="emptyWrap failedWrap">
+          <el-empty :image-size="160" description="暂无识别结果" />
+          <el-button
+            type="primary"
+            :loading="resubmitLoading"
+            @click="handleResubmit">
+            再次识别
+          </el-button>
+        </div>
+        <div v-else class="emptyWrap">
           <el-empty :image-size="160" description="暂无识别结果" />
         </div>
       </div>
@@ -106,13 +118,15 @@ import {
   $getInspectionTaskDetail,
   $getThirdLevelByFirstLevelDictCode,
   $exportInspectionTaskDetail,
+  $reSubmitInspectionTask,
 } from "@/api/flyControl/smart.ts";
 
 interface InspectionTask {
   id: string;
   name: string;
   createdAt: string;
-  status: "INIT" | "SUBMITTING" | "SUBMITTED" | "SUCCESS" | "FAILED";
+  // 与后端 viewStatus 对齐的三态视图状态；原始状态 status 仅保留在 raw 中备查
+  viewStatus: "PROCESSING" | "SUCCESS" | "FAILED";
   videoName?: string;
   raw?: any;
 }
@@ -142,7 +156,35 @@ const emits = defineEmits<{
     e: "locate",
     payload: { longitude: number; latitude: number; imageUrl?: string; id?: string },
   ): void;
+  // 再次识别提交成功后通知父组件刷新列表
+  (e: "resubmitted"): void;
 }>();
+
+const resubmitLoading = ref(false);
+
+/** 识别失败时重新提交 AI 识别；成功后由父组件刷新列表并保持选中 */
+async function handleResubmit() {
+  if (!props.task?.id) return;
+  if (resubmitLoading.value) return;
+  resubmitLoading.value = true;
+  try {
+    const res: any = await $reSubmitInspectionTask({
+      taskId: props.task.id,
+      // 后端未持久化该参数，前端保存过则回传
+      videoStartTimestamp: props.task.raw?.videoStartTimestamp,
+    });
+    if (res?.code !== 200) {
+      ElMessage.error(res?.msg || "再次识别提交失败");
+      return;
+    }
+    ElMessage.success("已重新提交识别");
+    emits("resubmitted");
+  } catch (e: any) {
+    ElMessage.error(e?.message || "再次识别提交失败");
+  } finally {
+    resubmitLoading.value = false;
+  }
+}
 
 const headerTitle = computed(() =>
   props.task ? `任务详情：${props.task.name}` : "任务详情",
@@ -231,6 +273,12 @@ const loadIssueTypeOptions = async (sceneCode: string) => {
 /** 根据当前任务与分页参数，拉取识别结果列表 */
 const fetchTaskIssues = async () => {
   if (!props.task?.id) return;
+  // 仅识别成功的任务存在识别结果；识别中/失败直接清空，不发详情请求
+  if (props.task.viewStatus !== "SUCCESS") {
+    results.value = [];
+    total.value = 0;
+    return;
+  }
   if (loading.value) return;
   loading.value = true;
   try {
@@ -463,6 +511,11 @@ const handleExportClick = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.failedWrap {
+  flex-direction: column;
+  gap: 12px;
 }
 
 .panelFooter {

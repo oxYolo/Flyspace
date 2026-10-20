@@ -61,6 +61,25 @@ export function $createInspectionTask(data: any) {
     });
 }
 
+/**
+ * 再次识别（识别失败的任务重新提交 AI 识别）
+ * /drone/drone/video/ai-task/re-submit
+ * @param data 请求体
+ * @param data.taskId AI任务ID
+ * @param data.videoStartTimestamp 视频开始时间戳（毫秒，可选；后端未持久化，前端有保存则回传）
+ * @returns 成功时 data 为重置后的任务信息（status=SUBMITTING）
+ */
+export function $reSubmitInspectionTask(data: {
+    taskId: string;
+    videoStartTimestamp?: number;
+}) {
+    return request({
+        url: `${urlConfig.baseUrl}/drone/drone/video/ai-task/re-submit`,
+        method: "post",
+        data,
+    });
+}
+
 
 
 /**删除巡检任务列表 

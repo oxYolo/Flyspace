@@ -32,9 +32,7 @@
           placeholder="识别状态..."
           clearable
           @change="handleStatusChange">
-          <el-option label="待提交" value="INIT" />
-          <el-option label="提交中" value="SUBMITTING" />
-          <el-option label="已提交" value="SUBMITTED" />
+          <el-option label="识别中" value="PROCESSING" />
           <el-option label="识别成功" value="SUCCESS" />
           <el-option label="识别失败" value="FAILED" />
         </el-select>
@@ -79,7 +77,8 @@ interface TaskListItem {
   id: string;
   name: string;
   createdAt: string;
-  status: "INIT" | "SUBMITTING" | "SUBMITTED" | "SUCCESS" | "FAILED";
+  // 与后端 viewStatus 对齐的三态视图状态；原始状态 status 仅保留在 raw 中备查
+  viewStatus: "PROCESSING" | "SUCCESS" | "FAILED";
   videoName?: string;
   videoUrl?: string;
   raw?: any;
@@ -97,7 +96,7 @@ const emits = defineEmits<{
 }>();
 
 const searchQuery = ref("");
-const statusFilter = ref<TaskListItem["status"] | "">("");
+const statusFilter = ref<TaskListItem["viewStatus"] | "">("");
 const scrollbarRef = ref<any>(null);
 
 const state = ref({
@@ -113,7 +112,7 @@ const taskList = ref<TaskListItem[]>([]);
 /** 过滤后的任务列表 */
 const filteredTasks = computed(() => {
   const byStatus = statusFilter.value
-    ? taskList.value.filter((task) => task.status === statusFilter.value)
+    ? taskList.value.filter((task) => task.viewStatus === statusFilter.value)
     : taskList.value;
   if (!searchQuery.value.trim()) return byStatus;
   const query = searchQuery.value.toLowerCase().trim();
@@ -210,17 +209,12 @@ function normalizeInspectionTask(row: any): TaskListItem {
   const createdAt = String(
     row?.submitTime || row?.createTime || row?.updateTime || "",
   );
-  const rawStatus = String(row?.status || "").toUpperCase();
-  const status: TaskListItem["status"] =
-    rawStatus === "INIT" ||
-    rawStatus === "SUBMITTING" ||
-    rawStatus === "SUBMITTED" ||
-    rawStatus === "SUCCESS" ||
-    rawStatus === "FAILED"
-      ? (rawStatus as TaskListItem["status"])
-      : rawStatus === "PENDING"
-        ? "INIT"
-        : "INIT";
+  // 后端直接给出三态视图状态，这里只做白名单校验，非法值按识别中处理
+  const viewStatus = String(row?.viewStatus || "").toUpperCase();
+  const normalizedViewStatus: TaskListItem["viewStatus"] =
+    viewStatus === "SUCCESS" || viewStatus === "FAILED"
+      ? (viewStatus as TaskListItem["viewStatus"])
+      : "PROCESSING";
 
   const sourceFilePath = String(row?.sourceFilePath || "");
   const cleaned = sourceFilePath.replace(/`/g, "").trim();
@@ -231,7 +225,7 @@ function normalizeInspectionTask(row: any): TaskListItem {
     id: id || String(Math.random()),
     name,
     createdAt,
-    status,
+    viewStatus: normalizedViewStatus,
     videoName: videoName || undefined,
     videoUrl: videoUrl || undefined,
     raw: row,
