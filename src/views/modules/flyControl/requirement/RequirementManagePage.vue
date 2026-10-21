@@ -824,12 +824,12 @@ onMounted(async () => {
 
 .filterItem {
   flex: 1;
-  min-width: 160px;
+  // min-width: 160px;
   max-width: 220px;
 }
 :deep(.filterItemDate) {
   flex: 1.5;
-  min-width: 320px;
+  // min-width: 320px;
   max-width: 400px;
   background-color: transparent !important;
   border: none !important;
@@ -857,7 +857,7 @@ onMounted(async () => {
   margin-left: auto;
   flex-shrink: 0;
   .create-btn {
-    margin-left: 60px;
+    margin-left: 30px;
   }
 }
 
@@ -926,6 +926,9 @@ onMounted(async () => {
   --el-table-bg-color: rgba(6, 28, 39, 0.78);
   --el-table-text-color: #dff9ff;
   --el-table-header-text-color: #e6fbff;
+  // 固定列默认阴影是黑色 15% 透明度，在深色背景下不可见，改为主题青色
+  --el-table-fixed-left-column: inset 10px 0 10px -10px rgba(0, 197, 254, 0.55);
+  --el-table-fixed-right-column: inset -10px 0 10px -10px rgba(0, 197, 254, 0.55);
   background: transparent;
   color: #dff9ff;
 }
@@ -935,7 +938,7 @@ onMounted(async () => {
 }
 
 :deep(.requirement-table .el-table__header-wrapper th.el-table__cell) {
-  background: rgba(6, 28, 39, 0.58) !important;
+  background: rgba(6, 28, 39) !important;
   color: #e6fbff !important;
   font-weight: 600 !important;
   font-size: 16px !important;

@@ -421,7 +421,10 @@ const handleExportClick = async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
+  // 助手打开后详情面板变窄：整行不换行，筛选项与按钮按可用宽度等比收缩
+  // container-type 使下方 @container 能感知本面板自身宽度（而非视口宽度）
+  container-type: inline-size;
+  padding: 8px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   gap: 12px;
 }
@@ -450,16 +453,22 @@ const handleExportClick = async () => {
 .headerFilters {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 10px;
-  flex-wrap: wrap;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .filterItem {
+  flex: 0 1 200px;
   width: 200px;
+  min-width: 110px;
 }
 :deep(.filterItemDate) {
-  width: 370px;
+  flex: 1 1 370px;
+  width: auto;
+  min-width: 180px;
+  max-width: 370px;
   background-color: rgba(23, 44, 44, 0.9) !important;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12) inset !important;
   border: 1px solid rgba(28, 155, 183, 1) !important;
@@ -482,6 +491,43 @@ const handleExportClick = async () => {
 
 .filterItem :deep(.el-range-separator) {
   color: rgba(255, 255, 255, 0.62) !important;
+}
+
+// 按钮组不换行；面板过窄时通过 @container 缩小按钮内边距与字号来保持一行
+.headerButtons {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+
+  :deep(.el-button) {
+    margin-left: 0;
+    white-space: nowrap;
+  }
+}
+
+// 面板宽度不足（助手打开）时逐级收缩控件尺寸
+@container (max-width: 1050px) {
+  .filterItem {
+    width: 150px;
+  }
+
+  .headerButtons :deep(.el-button) {
+    padding: 8px 8px;
+    font-size: 13px;
+  }
+}
+
+@container (max-width: 880px) {
+  .filterItem {
+    width: 120px;
+  }
+
+  .headerButtons :deep(.el-button) {
+    padding: 8px 6px;
+    font-size: 12px;
+  }
 }
 
 .panelBody {

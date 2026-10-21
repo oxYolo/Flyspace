@@ -135,7 +135,6 @@ const finished = ref(false);
 const pageNum = ref(1);
 const listRef = ref<HTMLElement | null>(null);
 
-let loaded = false;
 let generation = 0;
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -178,12 +177,6 @@ const loadPage = async (page: number) => {
   } finally {
     if (current === generation) loading.value = false;
   }
-};
-
-const ensureLoaded = () => {
-  if (loaded) return;
-  loaded = true;
-  void loadPage(1);
 };
 
 const handleSearchInput = () => {
@@ -286,7 +279,10 @@ const handleCommand = (command: string, session: ChatSessionItem) => {
 watch(
   () => props.active,
   (isActive) => {
-    if (isActive) ensureLoaded();
+    // 每次进入历史页都重新拉取第一页，保证新建会话、最新消息能及时展示
+    if (!isActive) return;
+    void loadPage(1);
+    listRef.value?.scrollTo({ top: 0 });
   },
   { immediate: true },
 );
