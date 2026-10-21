@@ -12,6 +12,8 @@ const LayerManage = shallowRef(
 
 const Header = defineAsyncComponent(() => import('@/layouts/Header.vue'))
 const ChatbotPanel = defineAsyncComponent(() => import('@/components/chatbot/ChatbotPanel.vue'))
+// 地图机场监控弹框：点击地图上机场 label 弹出直播弹框（胶水组件，自管理监听与显隐）
+const MapAirportLiveDialog = defineAsyncComponent(() => import('@/components/business/MapAirportLiveDialog.vue'))
 
 const chatbot = useChatbotStore();
 </script>
@@ -20,6 +22,7 @@ const chatbot = useChatbotStore();
   <div class="main-container">
     <Header />
     <layer-manage />
+    <map-airport-live-dialog />
     <side-tabs />
     <div
       class="content-wrap"
