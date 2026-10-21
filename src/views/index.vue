@@ -26,7 +26,7 @@ const chatbot = useChatbotStore();
     <side-tabs />
     <div
       class="content-wrap"
-      :style="{ paddingRight: chatbot.visible ? `${chatbot.panelWidth}vw` : '0px' }">
+      :style="{ paddingRight: chatbot.visible ? `max(350px, ${chatbot.panelWidth}vw)` : '0px' }">
       <router-view />
     </div>
     <ChatbotPanel />

@@ -4,7 +4,7 @@
     class="chatbot-panel"
     :class="{ 'is-resizing': resizing }"
     aria-label="智能问答窗口"
-    :style="{ width: `${chatbot.panelWidth}vw` }">
+    :style="{ width: `max(350px, ${chatbot.panelWidth}vw)` }">
     <button
       class="chatbot-panel__resize-handle"
       type="button"
@@ -1139,7 +1139,6 @@ onBeforeUnmount(() => {
     z-index: 900;
     display: flex;
     flex-direction: column;
-    min-width: 350px;
     overflow: visible;
     border-left: 1px solid rgba(0, 255, 255, 0.3);
     /* background: rgba(0, 10, 20, 0.82); */

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { watch, ref } from "vue";
+import { watch, ref, onMounted, onBeforeUnmount } from "vue";
 import { ScaleToOriginal } from "@element-plus/icons-vue";
 import { getImageUrl } from "@/utils/utils.ts";
 import GeoBorderBox from "@/components/common/GeoBorderBox.vue";
@@ -27,7 +27,37 @@ const droneImageUrl = getImageUrl(`assets/images/drone/飞行器.png`);
 const emit = defineEmits(["changeBig"]);
 
 // Cesium viewer & data sources
+const mapWrapRef = ref<HTMLElement | null>(null);
 const viewerRef = ref<any | null>(null);
+let mapResizeObserver: ResizeObserver | null = null;
+let mapResizeRaf = 0;
+
+// 容器尺寸变化（助手开关、座舱缩放）时手动通知 Cesium 重算画布尺寸
+const scheduleViewerResize = () => {
+  if (mapResizeRaf) return;
+  mapResizeRaf = requestAnimationFrame(() => {
+    mapResizeRaf = 0;
+    const v = viewerRef.value;
+    if (!v || v.isDestroyed?.()) return;
+    try {
+      v.resize?.();
+      v.scene?.requestRender?.();
+    } catch {}
+  });
+};
+
+onMounted(() => {
+  if (!mapWrapRef.value) return;
+  mapResizeObserver = new ResizeObserver(scheduleViewerResize);
+  mapResizeObserver.observe(mapWrapRef.value);
+});
+
+onBeforeUnmount(() => {
+  mapResizeObserver?.disconnect();
+  mapResizeObserver = null;
+  if (mapResizeRaf) cancelAnimationFrame(mapResizeRaf);
+  mapResizeRaf = 0;
+});
 let routeDs: any | null = null; // "routeLayer-source"
 let realRouteDs: any | null = null; // "realRouteLayer-source"
 let markerDs: any | null = null; // "animatePointLayer-source"
@@ -204,7 +234,7 @@ watch(
 );
 </script>
 <template>
-  <div class="live-map-wrap">
+  <div ref="mapWrapRef" class="live-map-wrap">
     <GeoBorderBox title="实时地图" width="100%" type="small" bgColor="#0a6a98">
       <template #right>
         <div class="header-right">

@@ -1,97 +1,103 @@
 <!-- 虚拟座舱 -->
 <template>
-  <div
-    class="fly-control-page"
-    :style="{ width: chatbot.visible ? `calc(100vw - ${chatbot.panelWidth}vw)` : '100vw' }">
+  <div class="fly-control-page" :style="{ width: pageWidth }">
     <!-- 主要内容区域-虚拟座舱 -->
     <div class="page-content">
       <GeoBigDialog
-        :width="chatbot.visible ? `calc(100vw - ${chatbot.panelWidth}vw)` : ''"
+        :width="chatbot.visible ? `calc(100vw - ${chatReserve})` : ''"
         @close="handleClose">
-        <div class="virtual-dock">
-          <el-select
-            v-if="isDock"
-            v-model="selectedDockSn"
-            class="dock-select"
-            filterable
-            size="large"
-            remote
-            reserve-keyword
-            placeholder="请选择机巢"
-            :remote-method="searchDockList"
-            :loading="dockListLoading"
-            @change="handleDockChange">
-            <el-option
-              v-for="item in dockOptions"
-              :key="item.deviceSn || item.id"
-              :label="getDockSelectLabel(item)"
-              :value="item.deviceSn">
-              <div class="dock-option">
-                <span class="dock-option-name">{{
-                  getDockOptionLabel(item)
-                }}</span>
-                <span class="dock-status" :class="getDockStatusClass(item)">
-                  {{ getDockStatusText(item) }}
-                </span>
+        <div ref="cockpitViewportRef" class="cockpit-viewport">
+          <div class="cockpit-stage" :style="cockpitStageStyle">
+            <div class="virtual-dock">
+              <el-select
+                v-if="isDock"
+                v-model="selectedDockSn"
+                class="dock-select"
+                filterable
+                size="large"
+                remote
+                reserve-keyword
+                placeholder="请选择机巢"
+                :remote-method="searchDockList"
+                :loading="dockListLoading"
+                @change="handleDockChange">
+                <el-option
+                  v-for="item in dockOptions"
+                  :key="item.deviceSn || item.id"
+                  :label="getDockSelectLabel(item)"
+                  :value="item.deviceSn">
+                  <div class="dock-option">
+                    <span class="dock-option-name">{{
+                      getDockOptionLabel(item)
+                    }}</span>
+                    <span
+                      class="dock-status"
+                      :class="getDockStatusClass(item)">
+                      {{ getDockStatusText(item) }}
+                    </span>
+                  </div>
+                </el-option>
+              </el-select>
+              <template v-else>
+                <span class="dock-name">{{ device?.nickname || "无" }}</span>
+                <span>({{ device?.deviceName || "无" }})</span>
+              </template>
+            </div>
+            <div
+              class="panel-content"
+              :class="{ gimbalPanelFullscreen: isGimbalPanelFullscreen }">
+              <div
+                class="info-wrap"
+                :class="{
+                  twoModel: !isDock,
+                  gimbalOnly: isGimbalPanelFullscreen,
+                }">
+                <div
+                  v-if="!isGimbalPanelFullscreen"
+                  :class="{ big: activeBig === '地图' }"
+                  class="grid-item">
+                  <LiveMap
+                    :is-big="activeBig === '地图'"
+                    :flyPositionArr="
+                      routeDetail.routePointJson?.coordinates || []
+                    "
+                    :realTimePosition="flyPositionArr"
+                    @change-big="changeBig('地图')" />
+                </div>
+                <div
+                  v-if="isDock && !isGimbalPanelFullscreen"
+                  :class="{ big: activeBig === '机场' }"
+                  class="grid-item">
+                  <DockVideo
+                    :key="`dock-${device?.deviceSn || ''}`"
+                    :is-big="activeBig === '机场'"
+                    :device="device"
+                    @change-big="changeBig('机场')" />
+                </div>
+                <div :class="{ big: activeBig === '云台' }" class="grid-item">
+                  <GimbalVideo
+                    :key="`gimbal-${device?.deviceSn || ''}-${device?.subDeviceSn || ''}`"
+                    ref="gimbalComp"
+                    :is-big="isGimbalPanelFullscreen || activeBig === '云台'"
+                    :is-panel-fullscreen="isGimbalPanelFullscreen"
+                    :device="device"
+                    :runTaskData="runTaskData"
+                    :droneStatus="droneStatus"
+                    @change-big="changeBig('云台')"
+                    @toggle-panel-fullscreen="toggleGimbalPanelFullscreen" />
+                </div>
               </div>
-            </el-option>
-          </el-select>
-          <template v-else>
-            <span class="dock-name">{{ device?.nickname || "无" }}</span>
-            <span>({{ device?.deviceName || "无" }})</span>
-          </template>
-        </div>
-        <div
-          class="panel-content"
-          :class="{ gimbalPanelFullscreen: isGimbalPanelFullscreen }">
-          <div
-            class="info-wrap"
-            :class="{
-              twoModel: !isDock,
-              gimbalOnly: isGimbalPanelFullscreen,
-            }">
-            <div
-              v-if="!isGimbalPanelFullscreen"
-              :class="{ big: activeBig === '地图' }"
-              class="grid-item">
-              <LiveMap
-                :is-big="activeBig === '地图'"
-                :flyPositionArr="routeDetail.routePointJson?.coordinates || []"
-                :realTimePosition="flyPositionArr"
-                @change-big="changeBig('地图')" />
+              <div v-if="!isGimbalPanelFullscreen" class="control-wrap">
+                <ControlPanel
+                  :device="device"
+                  :droneStatus="droneStatus"
+                  :runTaskData="runTaskData"
+                  @showShortCutKey="showShortCutKey"
+                  @takePhoto="gimbalComp?.value?.handleTakePhoto()"
+                  @togglePanorama="gimbalComp?.value?.togglePanorama()"
+                  @toggleRecording="gimbalComp?.value?.toggleRecording()" />
+              </div>
             </div>
-            <div
-              v-if="isDock && !isGimbalPanelFullscreen"
-              :class="{ big: activeBig === '机场' }"
-              class="grid-item">
-              <DockVideo
-                :key="`dock-${device?.deviceSn || ''}`"
-                :is-big="activeBig === '机场'"
-                :device="device"
-                @change-big="changeBig('机场')" />
-            </div>
-            <div :class="{ big: activeBig === '云台' }" class="grid-item">
-              <GimbalVideo
-                :key="`gimbal-${device?.deviceSn || ''}-${device?.subDeviceSn || ''}`"
-                ref="gimbalComp"
-                :is-big="isGimbalPanelFullscreen || activeBig === '云台'"
-                :is-panel-fullscreen="isGimbalPanelFullscreen"
-                :device="device"
-                :runTaskData="runTaskData"
-                :droneStatus="droneStatus"
-                @change-big="changeBig('云台')"
-                @toggle-panel-fullscreen="toggleGimbalPanelFullscreen" />
-            </div>
-          </div>
-          <div v-if="!isGimbalPanelFullscreen" class="control-wrap">
-            <ControlPanel
-              :device="device"
-              :droneStatus="droneStatus"
-              :runTaskData="runTaskData"
-              @showShortCutKey="showShortCutKey"
-              @takePhoto="gimbalComp?.value?.handleTakePhoto()"
-              @togglePanorama="gimbalComp?.value?.togglePanorama()"
-              @toggleRecording="gimbalComp?.value?.toggleRecording()" />
           </div>
         </div>
       </GeoBigDialog>
@@ -125,6 +131,45 @@ const flyControlStore = useFlyControlStore();
 const chatbot = useChatbotStore();
 // 进入本页前面板的宽度，离开本页时恢复，避免影响其他页面默认布局
 const previousPanelWidth = ref(chatbot.panelWidth);
+
+// 助手占位宽度：与面板实际宽度保持同一表达式（面板有 350px 最小宽度）
+const chatReserve = computed(() => `max(350px, ${chatbot.panelWidth}vw)`);
+const pageWidth = computed(() =>
+  chatbot.visible ? `calc(100vw - ${chatReserve.value})` : "100vw",
+);
+
+// 座舱等比缩放：可用宽度小于设计最小宽度时整体缩小，避免内部固定像素布局被挤压变形
+const DESIGN_MIN_WIDTH = 1600;
+const cockpitViewportRef = ref<HTMLElement | null>(null);
+const cockpitStageStyle = ref<Record<string, string>>({
+  width: "100%",
+  height: "100%",
+});
+let cockpitResizeObserver: ResizeObserver | null = null;
+let cockpitScaleRaf = 0;
+
+const updateCockpitScale = () => {
+  const viewport = cockpitViewportRef.value;
+  if (!viewport) return;
+  const availableWidth = viewport.clientWidth;
+  const availableHeight = viewport.clientHeight;
+  if (!availableWidth || !availableHeight) return;
+  // 只缩不放：可用宽度足够时保持 1:1
+  const scale = Math.min(1, availableWidth / DESIGN_MIN_WIDTH);
+  cockpitStageStyle.value = {
+    width: `${availableWidth / scale}px`,
+    height: `${availableHeight / scale}px`,
+    zoom: String(scale),
+  };
+};
+
+const scheduleCockpitScale = () => {
+  if (cockpitScaleRaf) return;
+  cockpitScaleRaf = requestAnimationFrame(() => {
+    cockpitScaleRaf = 0;
+    updateCockpitScale();
+  });
+};
 
 // 从 store 中获取设备信息和任务数据
 const device = computed(() => flyControlStore.device);
@@ -263,6 +308,12 @@ watch(
 );
 
 onMounted(async () => {
+  // 监听座舱可用区域尺寸变化（助手开关、面板拖拽都会触发），同步刷新缩放比例
+  if (cockpitViewportRef.value) {
+    cockpitResizeObserver = new ResizeObserver(scheduleCockpitScale);
+    cockpitResizeObserver.observe(cockpitViewportRef.value);
+    updateCockpitScale();
+  }
   // 进入飞控页：智能问答面板宽度调整为 20vw（更窄），让飞控内容有更大可视区
   previousPanelWidth.value = chatbot.panelWidth;
   chatbot.setWidth(20);
@@ -307,6 +358,10 @@ onMounted(async () => {
 
 onUnmounted(() => {
   disconnect();
+  cockpitResizeObserver?.disconnect();
+  cockpitResizeObserver = null;
+  if (cockpitScaleRaf) cancelAnimationFrame(cockpitScaleRaf);
+  cockpitScaleRaf = 0;
   // 离开飞控页：恢复智能问答面板进入前的默认宽度
   chatbot.setWidth(previousPanelWidth.value);
 });
@@ -347,6 +402,21 @@ const showShortCutKey = () => {
     width: 100%;
     height: calc(100vh - 60px); // 减去header高度
     overflow: hidden;
+
+    // 座舱可用区域：尺寸由助手占位宽度决定，内部按缩放比例绘制
+    .cockpit-viewport {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    // 座舱画布：宽高与 zoom 由脚本按可用宽度 / 设计最小宽度计算
+    .cockpit-stage {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
 
     .virtual-dock {
       position: absolute;
