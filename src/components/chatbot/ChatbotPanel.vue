@@ -408,6 +408,73 @@ const mapHistoryPhase = (
   return "finished";
 };
 
+// 把 history query 还原成聊天窗口可读的中文。
+// - 普通文本（绝大多数用户输入）原样返回，不做任何解析。
+// - JSON 字符串分两类：
+//   1) 确认协议 {type:"low_altitude_confirmation", action:"approve", fingerprint}
+//      → 按上一条 clarification.lowAltitude 的 reason/operation/willPublish 推导按钮文案。
+//   2) 单键值 {field: id}（候选选择）
+//      → 从上一条 clarification.lowAltitude.candidates 里按 id 匹配 name/title。
+// - clarification 可能为 null，此时 JSON 解析失败会原样返回，不抛错。
+const resolveHistoryQueryDisplay = (
+  rawQuery: unknown,
+  prevClarification: ChatbotClarificationData | null,
+): string => {
+  // ① 空值兜底
+  if (typeof rawQuery !== "string") return (rawQuery as string) || "";
+  let query = rawQuery.trim();
+  // ② trim 后仍为空
+  if (!query) return query;
+  // ③ 不以 { 开头 → 普通文本，直接返回
+  if (!query.startsWith("{")) return query;
+
+  // ④ JSON.parse
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(query);
+  } catch {
+    return query;
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    return query;
+  }
+
+  // 没有上一条 clarification → 无法匹配 candidates / reason，原样返回
+  if (!prevClarification) return query;
+
+  // ⑤ 确认协议 JSON
+  const obj = parsed as Record<string, unknown>;
+  if (obj.type === "low_altitude_confirmation") {
+    const reason = prevClarification.lowAltitude?.reason;
+    const operation = prevClarification.lowAltitude?.operation;
+    const willPublish = prevClarification.lowAltitude?.willPublish;
+    if (reason === "weather_confirmation") return "确认雨天继续起飞";
+    if (reason === "delete_confirmation") return "再次确认删除";
+    if (reason === "confirmation") {
+      if (operation === "low-altitude-task-create")
+        return willPublish ? "确认创建并执行" : "确认创建任务";
+      if (operation === "low-altitude-task-execute/distribute") return "确认下发执行";
+    }
+    // confirmation 类兜底：默认"确认执行"
+    return "确认执行";
+  }
+
+  // ⑥ 候选选择 JSON（单键值 {field: id}）
+  const keys = Object.keys(obj);
+  if (keys.length === 1) {
+    const id = obj[keys[0]];
+    const candidates = prevClarification.lowAltitude?.candidates;
+    if (Array.isArray(candidates) && candidates.length > 0) {
+      const hit = candidates.find((c) => c?.id === id);
+      if (hit) return hit.name || hit.title || String(id);
+    }
+    // candidates 未命中 → 显示 id 原值（不展示整串 JSON）
+    return String(id);
+  }
+
+  return query;
+};
+
 // 把历史消息按 ChatMessage 结构还原到聊天窗口，不做打字动画直接落位。
 const restoreHistoryMessages = (
   historyMessages: ChatHistoryMessage[],
@@ -418,7 +485,11 @@ const restoreHistoryMessages = (
 
   historyMessages.forEach((item) => {
     if (item?.query) {
-      restored.push({ id: ++messageId, role: "user", content: item.query });
+      restored.push({
+        id: ++messageId,
+        role: "user",
+        content: resolveHistoryQueryDisplay(item.query, lastClarification),
+      });
     }
 
     const assistantId = ++messageId;
